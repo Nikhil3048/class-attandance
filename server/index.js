@@ -51,9 +51,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 Attendance Management Server running at http://localhost:${PORT}`);
-  console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}\n`);
-});
+// Only start the server locally (Vercel serverless handles this automatically)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`\n🚀 Attendance Management Server running at http://localhost:${PORT}`);
+    console.log(`📋 Environment: ${process.env.NODE_ENV || 'development'}\n`);
+  });
+}
 
 module.exports = app;
