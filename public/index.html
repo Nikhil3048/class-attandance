@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendanceIQ — Student Attendance Management System</title>
+  <meta name="description" content="A modern, role-based student attendance management system for colleges and schools. Manage attendance for Students, Teachers, and Admins." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/style.css" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!--  LOADING OVERLAY                                               -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loader-wrapper">
+      <div class="loader-ring"></div>
+      <p class="loader-text">AttendanceIQ</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!--  AUTH SCREEN                                                   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <section id="auth-screen" class="auth-screen hidden">
+    <div class="auth-bg-shapes">
+      <div class="shape shape-1"></div>
+      <div class="shape shape-2"></div>
+      <div class="shape shape-3"></div>
+    </div>
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-logo">
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="10" fill="url(#grad1)"/>
+            <path d="M10 26V16l8-6 8 6v10H22v-6h-4v6z" fill="white"/>
+            <defs>
+              <linearGradient id="grad1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="auth-title">AttendanceIQ</h1>
+        <p class="auth-subtitle">Sign in to your account</p>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tab-login" onclick="App.showLoginTab()">Sign In</button>
+        <button class="auth-tab" id="tab-signup" onclick="App.showSignupTab()">Student Sign Up</button>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <div id="login-panel">
+        <form id="login-form" class="auth-form" novalidate>
+          <div class="form-group">
+            <label for="login-email">Email Address</label>
+            <input type="email" id="login-email" placeholder="you@college.edu" required autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <div class="password-wrapper">
+              <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
+              <button type="button" class="toggle-password" id="toggle-pwd" aria-label="Toggle password visibility">
+                <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="auth-error" class="alert alert-error hidden"></div>
+          <button type="submit" id="login-btn" class="btn btn-primary btn-full">
+            <span class="btn-text">Sign In</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+        </form>
+      </div>
+
+      <!-- SIGNUP FORM -->
+      <div id="signup-panel" style="display:none;">
+        <form id="signup-form" class="auth-form" novalidate>
+          <div class="form-group">
+            <label for="signup-name">Full Name *</label>
+            <input type="text" id="signup-name" placeholder="Your full name" required />
+          </div>
+          <div class="form-group">
+            <label for="signup-email">Email Address *</label>
+            <input type="email" id="signup-email" placeholder="you@college.edu" required />
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Password *</label>
+            <input type="password" id="signup-password" placeholder="Min 6 characters" required />
+          </div>
+          <div class="form-group">
+            <label for="signup-reg">Registration Number *</label>
+            <input type="text" id="signup-reg" placeholder="e.g. CS2024042" required />
+          </div>
+          <div class="form-group">
+            <label for="signup-class">Select Your Class *</label>
+            <select id="signup-class" required>
+              <option value="">Loading classes…</option>
+            </select>
+          </div>
+          <div id="signup-error" class="alert alert-error hidden"></div>
+          <div id="signup-success" class="alert alert-success hidden"></div>
+          <button type="submit" id="signup-btn" class="btn btn-primary btn-full">
+            <span class="btn-text">Submit Request</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+          <p style="font-size:0.78rem;color:var(--text-muted);text-align:center;margin-top:0.75rem;">
+            Your request will be reviewed by a teacher or admin before your account is activated.
+          </p>
+        </form>
+      </div>
+
+      <div class="auth-demo-accounts">
+        <p class="demo-label">Demo Accounts (after setup):</p>
+        <div class="demo-chips">
+          <span class="chip chip-admin">Admin</span>
+          <span class="chip chip-teacher">Teacher</span>
+          <span class="chip chip-student">Student</span>
+        </div>
+        <p class="demo-note">See <strong>SETUP.md</strong> for credentials</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!--  MAIN APP                                                      -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="app" class="app hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="10" fill="url(#grad2)"/>
+            <path d="M10 26V16l8-6 8 6v10H22v-6h-4v6z" fill="white"/>
+            <defs>
+              <linearGradient id="grad2" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span>AttendanceIQ</span>
+        </div>
+        <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- User Info -->
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-avatar">A</div>
+        <div class="user-info">
+          <p class="user-name" id="sidebar-user-name">Loading...</p>
+          <span class="user-role-badge" id="sidebar-user-role">Role</span>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- Populated by JS based on role -->
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="logout-btn" class="btn-logout">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main id="main-content" class="main-content">
+
+      <!-- TOP BAR -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobile-menu-btn" class="mobile-menu-btn" aria-label="Open menu">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
+          <h2 id="page-title" class="page-title">Dashboard</h2>
+        </div>
+        <div class="topbar-right">
+          <div class="topbar-user">
+            <div class="user-avatar-sm" id="topbar-avatar">A</div>
+            <span id="topbar-user-name">User</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- PAGE CONTENT (dynamically rendered) -->
+      <div id="page-content" class="page-content">
+        <!-- Page content goes here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!--  MODAL                                                         -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Modal Title</h3>
+        <button id="modal-close" class="modal-close" aria-label="Close modal">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- SIDEBAR OVERLAY (mobile) -->
+  <div id="sidebar-overlay" class="sidebar-overlay hidden"></div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+  <script src="/js/pages/admin.js"></script>
+  <script src="/js/pages/teacher.js"></script>
+  <script src="/js/pages/student.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
