@@ -727,7 +727,7 @@ const TeacherPages = (() => {
 
   return {
     renderDashboard, renderMark, renderHistory, renderClassReport, renderManageStudents, renderRequests,
-    toggleAtt, goMarkAttendance, goHistory, goReport, goManageStudents,
+    toggleAtt, handleStudentTap, goMarkAttendance, goHistory, goReport, goManageStudents,
     showAddStudentModal, toggleLoginFields, submitAddStudent, removeStudent, pickClass,
     approveRequest, confirmApprove, rejectRequest, confirmReject
   };
