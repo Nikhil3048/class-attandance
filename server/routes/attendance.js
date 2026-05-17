@@ -10,7 +10,7 @@ router.use(authenticate);
  * Mark attendance for multiple students (teacher/admin only)
  * Prevents duplicates automatically
  */
-router.post('/mark', requireRole('teacher', 'admin'), async (req, res) => {
+router.post('/mark', requireRole('teacher'), async (req, res) => {
   try {
     const { subject_id, date, records } = req.body;
     // records = [{ student_id, status: 'present'|'absent' }, ...]
@@ -52,7 +52,7 @@ router.post('/mark', requireRole('teacher', 'admin'), async (req, res) => {
  * PUT /api/attendance/:id
  * Edit a single attendance record (teacher/admin only)
  */
-router.put('/:id', requireRole('teacher', 'admin'), async (req, res) => {
+router.put('/:id', requireRole('teacher'), async (req, res) => {
   try {
     const { status } = req.body;
     if (!['present', 'absent'].includes(status)) {
@@ -95,7 +95,7 @@ router.get('/dates/:subjectId', requireRole('teacher', 'admin'), async (req, res
  * DELETE /api/attendance/clear
  * Clear attendance for a specific subject and date
  */
-router.delete('/clear', requireRole('teacher', 'admin'), async (req, res) => {
+router.delete('/clear', requireRole('teacher'), async (req, res) => {
   try {
     const { subject_id, date } = req.body;
     if (!subject_id || !date) {
