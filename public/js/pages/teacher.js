@@ -372,20 +372,18 @@ const TeacherPages = (() => {
 
   window.tapTimers = {};
   const handleStudentTap = (studentId, name, reg) => {
-    const now = Date.now();
-    const lastTap = window.tapTimers[studentId] || 0;
-    
-    if (now - lastTap < 350) {
-        // Double tap: revert the previous toggle and show info
-        window.tapTimers[studentId] = 0;
-        const currentState = attendanceStates[studentId];
-        toggleAtt(studentId, currentState === 'present' ? 'absent' : 'present'); // revert state
+    if (window.tapTimers[studentId]) {
+        // Double tap: clear the timer so the single tap doesn't fire!
+        clearTimeout(window.tapTimers[studentId]);
+        window.tapTimers[studentId] = null;
         Toast.info(`👤 ${name} — ${reg}`);
     } else {
-        // Single tap: toggle state
-        window.tapTimers[studentId] = now;
-        const currentState = attendanceStates[studentId];
-        toggleAtt(studentId, currentState === 'present' ? 'absent' : 'present');
+        // Start a timer. If a second tap doesn't happen in 250ms, it's a single tap.
+        window.tapTimers[studentId] = setTimeout(() => {
+            window.tapTimers[studentId] = null;
+            const currentState = attendanceStates[studentId];
+            toggleAtt(studentId, currentState === 'present' ? 'absent' : 'present');
+        }, 250);
     }
   };
 
