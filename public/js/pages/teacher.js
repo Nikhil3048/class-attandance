@@ -341,8 +341,8 @@ const TeacherPages = (() => {
             </div>
           </div>
           <div class="card-body">
-            <div class="attendance-list" id="attendance-list">
-              ${students.map(s => renderAttendanceRow(s)).join('')}
+            <div class="attendance-grid" id="attendance-list">
+              ${students.map(s => renderAttendanceCircle(s)).join('')}
             </div>
           </div>
           <div style="padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
@@ -370,29 +370,41 @@ const TeacherPages = (() => {
     }
   };
 
-  const renderAttendanceRow = (student) => {
+  window.tapTimers = {};
+  const handleStudentTap = (studentId, name, reg) => {
+    const now = Date.now();
+    const lastTap = window.tapTimers[studentId] || 0;
+    
+    if (now - lastTap < 350) {
+        // Double tap: revert the previous toggle and show info
+        window.tapTimers[studentId] = 0;
+        const currentState = attendanceStates[studentId];
+        toggleAtt(studentId, currentState === 'present' ? 'absent' : 'present'); // revert state
+        Toast.info(`👤 ${name} — ${reg}`);
+    } else {
+        // Single tap: toggle state
+        window.tapTimers[studentId] = now;
+        const currentState = attendanceStates[studentId];
+        toggleAtt(studentId, currentState === 'present' ? 'absent' : 'present');
+    }
+  };
+
+  const renderAttendanceCircle = (student) => {
     const state = attendanceStates[student.id] || 'absent';
+    const regStr = String(student.registration_number || '');
+    const lastTwo = regStr.length >= 2 ? regStr.slice(-2) : regStr.padStart(2, '0');
     return `
-      <div class="attendance-row" id="row-${student.id}">
-        <div class="student-info">
-          <div style="font-weight:600;font-size:0.875rem;">${esc(student.name)}</div>
-          <div class="student-reg">${esc(student.registration_number)}</div>
-        </div>
-        <div class="attendance-toggle">
-          <button class="att-btn att-btn-present ${state==='present'?'active':''}"
-            onclick="TeacherPages.toggleAtt('${student.id}','present')">Present</button>
-          <button class="att-btn att-btn-absent ${state==='absent'?'active':''}"
-            onclick="TeacherPages.toggleAtt('${student.id}','absent')">Absent</button>
-        </div>
-      </div>`;
+      <button class="student-circle ${state}" id="circle-${student.id}"
+        onclick="TeacherPages.handleStudentTap('${student.id}', '${esc(student.name)}', '${esc(regStr)}')">
+        ${esc(lastTwo)}
+      </button>`;
   };
 
   const toggleAtt = (studentId, status) => {
     attendanceStates[studentId] = status;
-    const row = document.getElementById(`row-${studentId}`);
-    if (row) {
-      row.querySelector('.att-btn-present').classList.toggle('active', status === 'present');
-      row.querySelector('.att-btn-absent').classList.toggle('active', status === 'absent');
+    const circle = document.getElementById(`circle-${studentId}`);
+    if (circle) {
+      circle.className = `student-circle ${status}`;
     }
     updateSummary();
   };

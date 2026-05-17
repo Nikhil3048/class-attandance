@@ -914,7 +914,51 @@ tbody tr { transition: background var(--transition); }
   .stats-grid { grid-template-columns: 1fr; }
   .card-header { flex-direction: column; align-items: flex-start; }
   .auth-card { padding: 1.75rem 1.25rem; }
+  .student-circle { width: 3rem; height: 3rem; font-size: 1rem; }
+  .attendance-grid { gap: 0.75rem; }
 }
+
+/* === ATTENDANCE GRID (Circles) === */
+.attendance-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: flex-start;
+  padding: 0.5rem 0;
+}
+
+.student-circle {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.student-circle:active {
+  transform: scale(0.85);
+}
+
+.student-circle.present {
+  background: var(--success);
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+.student-circle.present:hover { background: #0fa472; }
+
+.student-circle.absent {
+  background: var(--danger);
+  box-shadow: 0 4px 12px rgba(239,68,68,0.3);
+}
+.student-circle.absent:hover { background: #dc2626; }
 
 /* === AUTH TABS === */
 .auth-tabs { display:flex; gap:0; margin-bottom:1.5rem; background:rgba(255,255,255,0.04); border-radius:var(--radius); padding:0.25rem; border:1px solid var(--border); }
