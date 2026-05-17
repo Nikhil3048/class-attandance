@@ -941,6 +941,7 @@ tbody tr { transition: background var(--transition); }
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: white;
   user-select: none;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
 
