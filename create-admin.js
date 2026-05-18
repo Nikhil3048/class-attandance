@@ -1,10 +1,11 @@
 require('dotenv').config();
 const { supabaseAdmin } = require('./server/config/supabase');
 
-// ✏️ Change these values before running
-const ADMIN_EMAIL    = 'rajnikhil620300@gmail.com';
-const ADMIN_PASSWORD = 'Nraj#620';
-const ADMIN_NAME     = 'Admin User';
+// Usage: node create-admin.js <email> <password> "<name>"
+// If no arguments are provided, it uses the default dummy values.
+const ADMIN_EMAIL    = process.argv[2] || 'admin@example.com';
+const ADMIN_PASSWORD = process.argv[3] || 'Admin@1234';
+const ADMIN_NAME     = process.argv[4] || 'Admin User';
 
 async function createAdmin() {
   console.log('Checking if user exists...');
