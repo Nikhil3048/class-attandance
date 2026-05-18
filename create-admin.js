@@ -2,42 +2,71 @@ require('dotenv').config();
 const { supabaseAdmin } = require('./server/config/supabase');
 
 // ✏️ Change these values before running
-const ADMIN_EMAIL    = 'admin@example.com';
-const ADMIN_PASSWORD = 'Admin@1234';
+const ADMIN_EMAIL    = 'rajnikhil620300@gmail.com';
+const ADMIN_PASSWORD = 'Nraj#620';
 const ADMIN_NAME     = 'Admin User';
 
 async function createAdmin() {
-  console.log('Creating admin user...');
+  console.log('Checking if user exists...');
 
-  // 1. Create auth user
-  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-    email: ADMIN_EMAIL,
-    password: ADMIN_PASSWORD,
-    email_confirm: true
-  });
-
-  if (authError) {
-    console.error('❌ Auth error:', authError.message);
+  const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+  
+  if (listError) {
+    console.error('❌ Error fetching users:', listError.message);
     process.exit(1);
   }
 
-  // 2. Insert into users table
+  const existingUser = usersData.users.find(u => u.email === ADMIN_EMAIL);
+  let userId;
+
+  if (existingUser) {
+    console.log(`User ${ADMIN_EMAIL} already exists. Updating password and promoting to admin...`);
+    userId = existingUser.id;
+    
+    // Update password
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+      password: ADMIN_PASSWORD,
+      email_confirm: true
+    });
+
+    if (updateError) {
+      console.error('❌ Error updating password:', updateError.message);
+      process.exit(1);
+    }
+  } else {
+    console.log(`Creating new admin user: ${ADMIN_EMAIL}...`);
+    // Create auth user
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      email_confirm: true
+    });
+
+    if (authError) {
+      console.error('❌ Auth error:', authError.message);
+      process.exit(1);
+    }
+    userId = authData.user.id;
+  }
+
+  // Insert or update into public.users table
   const { error: profileError } = await supabaseAdmin
     .from('users')
-    .insert({ id: authData.user.id, name: ADMIN_NAME, email: ADMIN_EMAIL, role: 'admin' });
+    .upsert({ id: userId, name: ADMIN_NAME, email: ADMIN_EMAIL, role: 'admin' });
 
   if (profileError) {
     console.error('❌ Profile error:', profileError.message);
-    // Rollback
-    await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
     process.exit(1);
   }
 
-  console.log(`✅ Admin created successfully!`);
+  console.log(`✅ Admin updated/created successfully!`);
   console.log(`   Email: ${ADMIN_EMAIL}`);
+  console.log(`   Password: (Updated to what you typed)`);
   console.log(`   Name:  ${ADMIN_NAME}`);
   console.log(`   Role:  admin`);
-  process.exit(0);
+  
+  // Force clean exit to prevent hanging from Supabase timers
+  setTimeout(() => process.exit(0), 500);
 }
 
 createAdmin();
