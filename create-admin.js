@@ -1,11 +1,18 @@
 require('dotenv').config();
 const { supabaseAdmin } = require('./server/config/supabase');
 
-// Usage: node create-admin.js <email> <password> "<name>"
-// If no arguments are provided, it uses the default dummy values.
-const ADMIN_EMAIL    = process.argv[2] || 'admin@example.com';
-const ADMIN_PASSWORD = process.argv[3] || 'Admin@1234';
-const ADMIN_NAME     = process.argv[4] || 'Admin User';
+// 🔒 SECURITY FIX: Passwords are no longer hardcoded!
+// To change admin credentials, add them to your .env file:
+// ADMIN_EMAIL=your_email@gmail.com
+// ADMIN_PASSWORD=YourSecurePassword123
+const ADMIN_EMAIL    = process.env.ADMIN_EMAIL;
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_NAME     = 'Admin User';
+
+if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+  console.error("❌ ERROR: You must set ADMIN_EMAIL and ADMIN_PASSWORD in your .env file!");
+  process.exit(1);
+}
 
 async function createAdmin() {
   console.log('Checking if user exists...');
@@ -62,9 +69,7 @@ async function createAdmin() {
 
   console.log(`✅ Admin updated/created successfully!`);
   console.log(`   Email: ${ADMIN_EMAIL}`);
-  console.log(`   Password: (Updated to what you typed)`);
-  console.log(`   Name:  ${ADMIN_NAME}`);
-  console.log(`   Role:  admin`);
+  console.log(`   Password: (Hidden for security)`);
   
   // Force clean exit to prevent hanging from Supabase timers
   setTimeout(() => process.exit(0), 500);
