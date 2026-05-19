@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS public.signup_requests (
     name          TEXT NOT NULL,
     email         TEXT NOT NULL,
     temp_password TEXT NOT NULL,           -- stored temporarily, cleared after approval
-    registration_number TEXT,
+    role          TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'teacher')),
+    subject_name  TEXT,                    -- only required for teachers
+    registration_number TEXT,              -- only required for students
     class_id      UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
     status        TEXT NOT NULL DEFAULT 'pending'
                   CHECK (status IN ('pending', 'approved', 'rejected')),

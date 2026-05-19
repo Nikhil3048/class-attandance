@@ -85,6 +85,19 @@
       <!-- SIGNUP FORM -->
       <div id="signup-panel" style="display:none;">
         <form id="signup-form" class="auth-form" novalidate>
+          
+          <!-- Role Toggle -->
+          <div class="role-toggle-group" style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+            <label class="role-radio" style="flex:1;cursor:pointer;border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem;text-align:center;transition:all 0.2s;">
+              <input type="radio" name="signup_role" value="student" checked style="display:none;">
+              <span style="font-weight:600;">🎓 Student</span>
+            </label>
+            <label class="role-radio" style="flex:1;cursor:pointer;border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem;text-align:center;transition:all 0.2s;">
+              <input type="radio" name="signup_role" value="teacher" style="display:none;">
+              <span style="font-weight:600;">👨‍🏫 Teacher</span>
+            </label>
+          </div>
+
           <div class="form-group">
             <label for="signup-name">Full Name *</label>
             <input type="text" id="signup-name" placeholder="Your full name" required />
@@ -98,15 +111,20 @@
             <input type="password" id="signup-password" placeholder="Min 6 characters" required />
           </div>
           <div class="form-group">
-            <label for="signup-reg">Registration Number *</label>
-            <input type="text" id="signup-reg" placeholder="e.g. CS2024042" required />
-          </div>
-          <div class="form-group">
-            <label for="signup-class">Select Your Class *</label>
+            <label for="signup-class">Select Class *</label>
             <select id="signup-class" required>
               <option value="">Loading classes…</option>
             </select>
           </div>
+          <div class="form-group" id="group-reg">
+            <label for="signup-reg">Registration Number *</label>
+            <input type="text" id="signup-reg" placeholder="e.g. CS2024042" required />
+          </div>
+          <div class="form-group hidden" id="group-subject">
+            <label for="signup-subject">Subject You Teach *</label>
+            <input type="text" id="signup-subject" placeholder="e.g. Data Structures" />
+          </div>
+
           <div id="signup-error" class="alert alert-error hidden"></div>
           <div id="signup-success" class="alert alert-success hidden"></div>
           <button type="submit" id="signup-btn" class="btn btn-primary btn-full">

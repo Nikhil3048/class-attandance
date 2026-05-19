@@ -658,7 +658,14 @@ const AdminPages = (() => {
                 <div class="request-card" id="req-${r.id}">
                   <div class="request-card-info">
                     <strong>${esc(r.name)}</strong>
-                    <span>${esc(r.email)} &nbsp;·&nbsp; Class: <strong>${esc(r.classes?.class_name||'—')}</strong> &nbsp;·&nbsp; ${formatDate(r.created_at?.split('T')[0])}</span>
+                    <span class="badge ${r.role === 'teacher' ? 'badge-primary' : 'badge-secondary'}" style="font-size:0.7rem; padding:2px 6px; margin-left:4px;">
+                      ${r.role === 'teacher' ? '👨‍🏫 Teacher' : '🎓 Student'}
+                    </span>
+                    <div style="margin-top:0.3rem;">
+                      ${esc(r.email)} &nbsp;·&nbsp; Class: <strong>${esc(r.classes?.class_name||'—')}</strong>
+                      ${r.role === 'teacher' ? `&nbsp;·&nbsp; Subject: <strong>${esc(r.subject_name||'—')}</strong>` : ''}
+                      &nbsp;·&nbsp; ${formatDate(r.created_at?.split('T')[0])}
+                    </div>
                   </div>
                   <div class="request-card-actions">
                     <button class="btn btn-primary btn-sm" onclick="AdminPages.approveRequest('${r.id}','${esc(r.name)}')">
@@ -684,9 +691,9 @@ const AdminPages = (() => {
                   ? `<tr><td colspan="5"><div class="table-empty"><p>No history yet</p></div></td></tr>`
                   : [...approved, ...rejected].sort((a,b) => new Date(b.reviewed_at||b.created_at) - new Date(a.reviewed_at||a.created_at)).map(r => `
                     <tr>
-                      <td><strong>${esc(r.name)}</strong></td>
+                      <td><strong>${esc(r.name)}</strong><br><span style="font-size:0.75rem;color:var(--text-muted);">${r.role === 'teacher' ? 'Teacher' : 'Student'}</span></td>
                       <td>${esc(r.email)}</td>
-                      <td>${esc(r.classes?.class_name||'—')}</td>
+                      <td>${esc(r.classes?.class_name||'—')}${r.role==='teacher' ? `<br><span style="font-size:0.75rem;">Subject: ${esc(r.subject_name||'—')}</span>` : ''}</td>
                       <td><span class="badge badge-${r.status === 'approved' ? 'present' : 'absent'}">${r.status}</span></td>
                       <td>${formatDate((r.reviewed_at||r.created_at)?.split('T')[0])}</td>
                     </tr>`).join('')}
@@ -703,7 +710,7 @@ const AdminPages = (() => {
   };
 
   const approveRequest = async (id, name) => {
-    if (!confirmAction(`Approve "${name}"? This will create their student account immediately.`)) return;
+    if (!confirmAction(`Approve "${name}"? This will create their account immediately.`)) return;
     try {
       const res = await ApiClient.requests.approve(id, {});
       Toast.success(res.message);

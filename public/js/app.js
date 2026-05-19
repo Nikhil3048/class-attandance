@@ -55,10 +55,40 @@ const App = (() => {
     ApiClient.requests.getClasses().then(classes => {
       const sel = document.getElementById('signup-class');
       if (sel && Array.isArray(classes)) {
-        sel.innerHTML = `<option value="">Select your class…</option>` +
+        sel.innerHTML = `<option value="">Select Class…</option>` +
           classes.map(c => `<option value="${c.id}">${c.class_name}</option>`).join('');
       }
     }).catch(() => {});
+
+    // Role toggle UI logic
+    document.querySelectorAll('input[name="signup_role"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const isStudent = e.target.value === 'student';
+        
+        // Update styling
+        document.querySelectorAll('.role-radio').forEach(lbl => {
+          lbl.style.borderColor = 'var(--border)';
+          lbl.style.background = 'transparent';
+        });
+        e.target.parentElement.style.borderColor = 'var(--accent)';
+        e.target.parentElement.style.background = 'rgba(99,102,241,0.05)';
+
+        // Toggle fields
+        document.getElementById('group-reg').classList.toggle('hidden', !isStudent);
+        document.getElementById('signup-reg').required = isStudent;
+
+        document.getElementById('group-subject').classList.toggle('hidden', isStudent);
+        document.getElementById('signup-subject').required = !isStudent;
+
+        // Reset errors
+        document.getElementById('signup-error').classList.add('hidden');
+        document.getElementById('signup-success').classList.add('hidden');
+      });
+    });
+    
+    // Trigger initial styling
+    const firstRadio = document.querySelector('input[name="signup_role"]:checked');
+    if (firstRadio) firstRadio.dispatchEvent(new Event('change'));
   };
 
   // ─── AUTH ─────────────────────────────────────────────────────────────────────
@@ -102,27 +132,47 @@ const App = (() => {
     const btn = document.getElementById('signup-btn');
     const errEl = document.getElementById('signup-error');
     const successEl = document.getElementById('signup-success');
+    const role            = document.querySelector('input[name="signup_role"]:checked').value;
     const name            = document.getElementById('signup-name').value.trim();
     const email           = document.getElementById('signup-email').value.trim();
     const password        = document.getElementById('signup-password').value;
-    const registration_number = document.getElementById('signup-reg').value.trim();
     const class_id        = document.getElementById('signup-class').value;
+    const registration_number = document.getElementById('signup-reg').value.trim();
+    const subject_name    = document.getElementById('signup-subject').value.trim();
 
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
-    if (!name || !email || !password || !registration_number || !class_id) {
-      errEl.textContent = 'All fields are required';
+    if (!name || !email || !password || !class_id) {
+      errEl.textContent = 'Please fill all required fields.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (role === 'student' && !registration_number) {
+      errEl.textContent = 'Registration Number is required for students.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    
+    if (role === 'teacher' && !subject_name) {
+      errEl.textContent = 'Subject Name is required for teachers.';
       errEl.classList.remove('hidden');
       return;
     }
 
     setButtonLoading(btn, true);
     try {
-      const res = await ApiClient.requests.submit({ name, email, password, registration_number, class_id });
+      const payload = { name, email, password, class_id, role };
+      if (role === 'student') payload.registration_number = registration_number;
+      if (role === 'teacher') payload.subject_name = subject_name;
+
+      const res = await ApiClient.requests.submit(payload);
       successEl.textContent = res.message;
       successEl.classList.remove('hidden');
       document.getElementById('signup-form').reset();
+      // Reset radio styles
+      document.querySelector('input[name="signup_role"][value="student"]').click();
     } catch(err) {
       errEl.textContent = err.message;
       errEl.classList.remove('hidden');

@@ -18,10 +18,10 @@ router.get('/classes', async (req, res) => {
 // ─── PUBLIC: Submit a signup request ─────────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { name, email, password, class_id, registration_number } = req.body;
+    const { name, email, password, class_id, role, registration_number, subject_name } = req.body;
 
-    if (!name || !email || !password || !class_id || !registration_number) {
-      return res.status(400).json({ error: 'name, email, password, class_id, and registration_number are required' });
+    if (!name || !email || !password || !class_id || !role) {
+      return res.status(400).json({ error: 'Missing required fields' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
@@ -48,7 +48,11 @@ router.post('/', async (req, res) => {
 
     const { data, error } = await supabaseAdmin
       .from('signup_requests')
-      .insert({ name, email, temp_password: password, class_id, registration_number, status: 'pending' })
+      .insert({ 
+        name, email, temp_password: password, class_id, 
+        role, registration_number, subject_name, 
+        status: 'pending' 
+      })
       .select('id').single();
 
     if (error) throw error;
@@ -78,12 +82,12 @@ router.get('/', async (req, res) => {
     if (status) query = query.eq('status', status);
 
     if (req.user.role === 'teacher') {
-      // Only show requests for classes where this teacher has a subject
+      // Teachers ONLY see 'student' requests for their classes
       const { data: subjects } = await supabaseAdmin
         .from('subjects').select('class_id').eq('teacher_id', req.user.id);
       const classIds = [...new Set((subjects || []).map(s => s.class_id))];
       if (classIds.length === 0) return res.json([]);
-      query = query.in('class_id', classIds);
+      query = query.in('class_id', classIds).eq('role', 'student');
     } else if (req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Access denied' });
     }
@@ -109,7 +113,7 @@ router.get('/count', async (req, res) => {
         .from('subjects').select('class_id').eq('teacher_id', req.user.id);
       const classIds = [...new Set((subjects || []).map(s => s.class_id))];
       if (classIds.length === 0) return res.json({ count: 0 });
-      query = query.in('class_id', classIds);
+      query = query.in('class_id', classIds).eq('role', 'student');
     } else if (req.user.role !== 'admin') {
       return res.json({ count: 0 });
     }
@@ -135,8 +139,8 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
       return res.status(400).json({ error: `Request is already ${request.status}` });
     }
 
-    // Use registration number from the signup request itself
-    const regNo = request.registration_number || `STU${Date.now().toString().slice(-6)}`;
+    // Extract role from request (default to student for older requests)
+    const reqRole = request.role || 'student';
 
     // 1. Create Supabase auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -149,26 +153,57 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
     // 2. Create users profile
     const { error: profileError } = await supabaseAdmin
       .from('users')
-      .insert({ id: authData.user.id, name: request.name, email: request.email, role: 'student' });
+      .insert({ id: authData.user.id, name: request.name, email: request.email, role: reqRole });
 
     if (profileError) {
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
       return res.status(400).json({ error: profileError.message });
     }
 
-    // 3. Create student record
-    const { error: studentError } = await supabaseAdmin
-      .from('students')
-      .insert({
-        name: request.name,
-        registration_number: regNo,
-        class_id: request.class_id,
-        user_id: authData.user.id
-      });
+    let successMessage = '';
 
-    if (studentError) {
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return res.status(400).json({ error: studentError.message });
+    if (reqRole === 'teacher') {
+      // 3a. Create or Update Subject for Teacher
+      const subjectName = request.subject_name || 'General';
+      const { data: existingSubject } = await supabaseAdmin
+        .from('subjects')
+        .select('id')
+        .eq('class_id', request.class_id)
+        .ilike('subject_name', subjectName)
+        .maybeSingle();
+
+      if (existingSubject) {
+        // Assign this teacher to the existing subject
+        await supabaseAdmin.from('subjects')
+          .update({ teacher_id: authData.user.id })
+          .eq('id', existingSubject.id);
+      } else {
+        // Create new subject
+        await supabaseAdmin.from('subjects')
+          .insert({ 
+            subject_name: subjectName, 
+            class_id: request.class_id, 
+            teacher_id: authData.user.id 
+          });
+      }
+      successMessage = `${request.name} approved as a Teacher for ${subjectName}!`;
+    } else {
+      // 3b. Create student record
+      const regNo = request.registration_number || `STU${Date.now().toString().slice(-6)}`;
+      const { error: studentError } = await supabaseAdmin
+        .from('students')
+        .insert({
+          name: request.name,
+          registration_number: regNo,
+          class_id: request.class_id,
+          user_id: authData.user.id
+        });
+
+      if (studentError) {
+        await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+        return res.status(400).json({ error: studentError.message });
+      }
+      successMessage = `${request.name} approved! Account created with reg. no. ${regNo}`;
     }
 
     // 4. Mark request as approved and clear password
@@ -182,7 +217,7 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
       })
       .eq('id', id);
 
-    res.json({ message: `${request.name} approved! Account created with reg. no. ${regNo}` });
+    res.json({ message: successMessage });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
