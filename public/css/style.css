@@ -979,3 +979,104 @@ tbody tr { transition: background var(--transition); }
 .request-card-info span { font-size:0.8rem; color:var(--text-muted); }
 .request-card-actions { display:flex; gap:0.5rem; flex-shrink:0; }
 .requests-grid { display:flex; flex-direction:column; gap:0.75rem; padding:1.25rem; }
+
+/* === STUDENT PROFILE BANNER === */
+.student-profile-banner {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.12));
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn 0.4s ease;
+}
+
+.profile-badge-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+.profile-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-details h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.375rem 0;
+}
+
+.profile-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.profile-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.profile-meta-item svg {
+  color: var(--accent-light);
+  opacity: 0.85;
+}
+
+/* Adjustments to .alert to support wrapping text containers */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+}
+.alert-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+.alert-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* RESPONSIVE EXTRA */
+@media (max-width: 768px) {
+  .student-profile-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+  .filter-bar {
+    align-items: stretch !important;
+  }
+  .filter-group {
+    width: 100%;
+  }
+  .filter-group button, .filter-group input, .filter-group select {
+    width: 100% !important;
+  }
+}
+

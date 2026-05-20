@@ -19,10 +19,23 @@ const StudentPages = (() => {
       const belowCount = summary.filter(s => s.below_75).length;
 
       document.getElementById('page-content').innerHTML = `
-        <div class="alert alert-info" style="margin-bottom:1.25rem;">
-          👋 Welcome, <strong>${esc(profile.name)}</strong> — 
-          Class: <strong>${esc(profile.classes?.class_name || '—')}</strong> | 
-          Reg No: <strong>${esc(profile.registration_number)}</strong>
+        <div class="student-profile-banner">
+          <div class="profile-badge-avatar">
+            ${esc(profile.name.charAt(0).toUpperCase())}
+          </div>
+          <div class="profile-details">
+            <h2>Welcome back, ${esc(profile.name)}!</h2>
+            <div class="profile-meta-row">
+              <span class="profile-meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+                Class: <strong>${esc(profile.classes?.class_name || '—')}</strong>
+              </span>
+              <span class="profile-meta-item">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                Reg No: <strong>${esc(profile.registration_number)}</strong>
+              </span>
+            </div>
+          </div>
         </div>
         <div class="stats-grid">
           <div class="stat-card">
@@ -57,8 +70,11 @@ const StudentPages = (() => {
 
         ${belowCount > 0 ? `
           <div class="alert alert-warning" style="margin-bottom:1.25rem;">
-            ⚠️ You have <strong>${belowCount} subject(s)</strong> with attendance below 75%. 
-            <a href="#" onclick="App.navigate('subject-wise')" style="color:inherit;text-decoration:underline;">View details →</a>
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-text">
+              You have <strong>${belowCount} subject(s)</strong> with attendance below 75%. 
+              <a href="#" onclick="App.navigate('subject-wise')" style="color:inherit;text-decoration:underline;margin-left:0.25rem;">View details →</a>
+            </div>
           </div>` : ''}
 
         <div class="card">
@@ -179,11 +195,17 @@ const StudentPages = (() => {
       document.getElementById('page-content').innerHTML = `
         ${warnings.length > 0 ? `
           <div class="alert alert-warning" style="margin-bottom:1.25rem;">
-            ⚠️ <strong>${warnings.length} subject(s)</strong> below 75% attendance — 
-            ${warnings.map(s=>`<strong>${esc(s.subject_name)}</strong> (${s.percentage}%)`).join(', ')}
+            <span class="alert-icon">⚠️</span>
+            <div class="alert-text">
+              <strong>${warnings.length} subject(s)</strong> below 75% attendance — 
+              ${warnings.map(s=>`<strong>${esc(s.subject_name)}</strong> (${s.percentage}%)`).join(', ')}
+            </div>
           </div>` : `
           <div class="alert alert-success" style="margin-bottom:1.25rem;">
-            ✅ All subjects are above 75% — Keep it up!
+            <span class="alert-icon">✅</span>
+            <div class="alert-text">
+              All subjects are above 75% — Keep it up!
+            </div>
           </div>`}
         <div class="card">
           <div class="card-header">
