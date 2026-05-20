@@ -18,13 +18,33 @@ router.get('/classes', async (req, res) => {
 // ─── PUBLIC: Submit a signup request ─────────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { name, email, password, class_id, role, registration_number, subject_name } = req.body;
+    const { name, email, password, class_id, role, registration_number, subject_name, teacher_code } = req.body;
 
     if (!name || !email || !password || !class_id || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    if (role === 'teacher') {
+      let expectedCode = process.env.TEACHER_SIGNUP_CODE || 'TeacherSecure2026!';
+      try {
+        const { data, error } = await supabaseAdmin
+          .from('settings')
+          .select('value')
+          .eq('key', 'teacher_signup_code')
+          .maybeSingle();
+        if (!error && data && data.value) {
+          expectedCode = data.value;
+        }
+      } catch (err) {
+        console.error('Failed to get teacher signup code from settings table:', err.message);
+      }
+
+      if (!teacher_code || teacher_code !== expectedCode) {
+        return res.status(403).json({ error: 'Invalid Teacher Signup Code' });
+      }
     }
 
     // Check if email already has a pending request

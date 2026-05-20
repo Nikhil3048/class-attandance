@@ -12,6 +12,53 @@ const App = (() => {
   const init = async () => {
     Modal.init();
 
+    // Handle Google OAuth redirect callback
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token=')) {
+      try {
+        const params = new URLSearchParams(hash.replace('#', '?'));
+        const accessToken = params.get('access_token');
+        const refreshToken = params.get('refresh_token');
+        const expiresAt = Math.floor(Date.now() / 1000) + parseInt(params.get('expires_in') || '3600');
+
+        localStorage.setItem('att_token', accessToken);
+        if (refreshToken) localStorage.setItem('att_refresh_token', refreshToken);
+        localStorage.setItem('att_expires_at', expiresAt.toString());
+
+        // Clear hash from URL
+        window.history.replaceState(null, null, ' ');
+
+        const userProfile = await ApiClient.get('/auth/me');
+        localStorage.setItem('att_user', JSON.stringify(userProfile));
+        currentUser = userProfile;
+
+        showApp();
+        scheduleTokenRefresh();
+        loadRequestBadge();
+        navigate('dashboard');
+        Toast.success(`Welcome back, ${userProfile.name}!`);
+        return;
+      } catch (err) {
+        clearSession();
+        showAuth();
+        const errEl = document.getElementById('auth-error');
+        if (errEl) {
+          errEl.textContent = err.message || 'Google account not registered/approved.';
+          errEl.classList.remove('hidden');
+        }
+        Toast.error(err.message || 'Google account profile not found.');
+        return;
+      }
+    }
+
+    // Fetch project config (exposes Supabase URL)
+    let config = null;
+    try {
+      config = await ApiClient.get('/auth/config');
+    } catch (err) {
+      console.error('Failed to load server configuration:', err);
+    }
+
     // Check for saved session
     const token = localStorage.getItem('att_token');
     const savedUser = localStorage.getItem('att_user');
@@ -35,6 +82,20 @@ const App = (() => {
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('mobile-menu-btn').addEventListener('click', openSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+
+    // Google login click listener
+    const googleBtn = document.getElementById('google-login-btn');
+    if (googleBtn) {
+      googleBtn.addEventListener('click', () => {
+        if (!config || !config.supabaseUrl) {
+          Toast.error('Server configuration not loaded. Please try again.');
+          return;
+        }
+        const supabaseUrl = config.supabaseUrl;
+        const redirectTo = window.location.origin + '/';
+        window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+      });
+    }
 
     // Password toggle
     document.getElementById('toggle-pwd').addEventListener('click', () => {
@@ -79,6 +140,9 @@ const App = (() => {
 
         document.getElementById('group-subject').classList.toggle('hidden', isStudent);
         document.getElementById('signup-subject').required = !isStudent;
+
+        document.getElementById('group-teacher-code').classList.toggle('hidden', isStudent);
+        document.getElementById('signup-teacher-code').required = !isStudent;
 
         // Reset errors
         document.getElementById('signup-error').classList.add('hidden');
@@ -139,6 +203,7 @@ const App = (() => {
     const class_id        = document.getElementById('signup-class').value;
     const registration_number = document.getElementById('signup-reg').value.trim();
     const subject_name    = document.getElementById('signup-subject').value.trim();
+    const teacher_code    = document.getElementById('signup-teacher-code').value.trim();
 
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
@@ -155,17 +220,27 @@ const App = (() => {
       return;
     }
     
-    if (role === 'teacher' && !subject_name) {
-      errEl.textContent = 'Subject Name is required for teachers.';
-      errEl.classList.remove('hidden');
-      return;
+    if (role === 'teacher') {
+      if (!subject_name) {
+        errEl.textContent = 'Subject Name is required for teachers.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (!teacher_code) {
+        errEl.textContent = 'Teacher Signup Code is required.';
+        errEl.classList.remove('hidden');
+        return;
+      }
     }
 
     setButtonLoading(btn, true);
     try {
       const payload = { name, email, password, class_id, role };
       if (role === 'student') payload.registration_number = registration_number;
-      if (role === 'teacher') payload.subject_name = subject_name;
+      if (role === 'teacher') {
+        payload.subject_name = subject_name;
+        payload.teacher_code = teacher_code;
+      }
 
       const res = await ApiClient.requests.submit(payload);
       successEl.textContent = res.message;
@@ -320,6 +395,7 @@ const App = (() => {
       case 'subjects':  AdminPages.renderSubjects();  break;
       case 'report':    AdminPages.renderReport();    break;
       case 'requests':  AdminPages.renderRequests();  break;
+      case 'settings':  AdminPages.renderSettings();  break;
       default: AdminPages.renderDashboard();
     }
   };

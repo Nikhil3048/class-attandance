@@ -100,3 +100,16 @@ ON CONFLICT DO NOTHING;
 -- INSERT INTO public.subjects (subject_name, class_id, teacher_id) VALUES
 --     ('Data Structures', '<class_id>', '<teacher_id>'),
 --     ('Computer Networks', '<class_id>', '<teacher_id>');
+
+-- ─── 6. SETTINGS TABLE ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Service role full access settings" ON public.settings FOR ALL TO service_role USING (true) WITH CHECK (true);
+
+INSERT INTO public.settings (key, value) VALUES ('teacher_signup_code', 'TeacherSecure2026!') ON CONFLICT DO NOTHING;
+

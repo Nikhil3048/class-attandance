@@ -75,7 +75,9 @@ const ApiClient = (() => {
       getReport:      (params)     => {
         const q = new URLSearchParams(params || {}).toString();
         return request('GET', `/admin/attendance/report${q ? `?${q}` : ''}`);
-      }
+      },
+      getTeacherSignupCode: () => request('GET', '/admin/settings/teacher-signup-code'),
+      setTeacherSignupCode: (code) => request('POST', '/admin/settings/teacher-signup-code', { code })
     },
 
     // ── Teacher ──────────────────────────────────────────────────────

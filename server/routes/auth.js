@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { supabase, supabaseAdmin } = require('../config/supabase');
+const { authenticate } = require('../middleware/auth');
 
 /**
  * POST /api/auth/register
@@ -128,6 +129,38 @@ router.post('/logout', async (req, res) => {
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+/**
+ * GET /api/auth/config
+ * Exposes non-sensitive client configuration
+ */
+router.get('/config', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL
+  });
+});
+
+/**
+ * GET /api/auth/me
+ * Fetch logged-in user profile from users table
+ */
+router.get('/me', authenticate, async (req, res) => {
+  try {
+    const { data: profile, error } = await supabaseAdmin
+      .from('users')
+      .select('id, name, email, role')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error || !profile) {
+      return res.status(404).json({ error: 'User profile not found' });
+    }
+
+    res.json(profile);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

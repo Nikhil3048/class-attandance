@@ -310,4 +310,93 @@ router.get('/attendance/report', async (req, res) => {
   }
 });
 
+// ─── SETTINGS ─────────────────────────────────────────────────────────────────
+
+const fs = require('fs');
+const path = require('path');
+
+function updateEnvFile(key, value) {
+  try {
+    const envPath = path.join(__dirname, '../../.env');
+    if (fs.existsSync(envPath)) {
+      let content = fs.readFileSync(envPath, 'utf8');
+      const regex = new RegExp(`^${key}=.*`, 'm');
+      if (regex.test(content)) {
+        content = content.replace(regex, `${key}=${value}`);
+      } else {
+        content += `\n${key}=${value}`;
+      }
+      fs.writeFileSync(envPath, content, 'utf8');
+      process.env[key] = value; // update in-memory too
+    }
+  } catch (err) {
+    console.error('Failed to write to .env:', err);
+  }
+}
+
+/**
+ * GET /api/admin/settings/teacher-signup-code
+ */
+router.get('/settings/teacher-signup-code', async (req, res) => {
+  try {
+    let dbValue = null;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('settings')
+        .select('value')
+        .eq('key', 'teacher_signup_code')
+        .maybeSingle();
+      if (!error && data) {
+        dbValue = data.value;
+      }
+    } catch (e) {
+      // settings table might not exist
+    }
+
+    const value = dbValue || process.env.TEACHER_SIGNUP_CODE || 'TeacherSecure2026!';
+    res.json({ code: value });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/settings/teacher-signup-code
+ */
+router.post('/settings/teacher-signup-code', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      return res.status(400).json({ error: 'code is required' });
+    }
+
+    // Try DB first
+    let dbSuccess = false;
+    let dbErrorMsg = '';
+    try {
+      const { error } = await supabaseAdmin
+        .from('settings')
+        .upsert({ key: 'teacher_signup_code', value: code });
+      if (!error) {
+        dbSuccess = true;
+      } else {
+        dbErrorMsg = error.message;
+      }
+    } catch (e) {
+      dbErrorMsg = e.message;
+    }
+
+    // Also update .env file
+    updateEnvFile('TEACHER_SIGNUP_CODE', code);
+
+    res.json({ 
+      message: 'Teacher signup code updated successfully',
+      dbSuccess,
+      dbWarning: dbSuccess ? null : `Note: Settings table update failed (${dbErrorMsg}). Updated .env config instead.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

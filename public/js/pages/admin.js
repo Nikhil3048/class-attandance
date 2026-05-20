@@ -754,9 +754,102 @@ const AdminPages = (() => {
     }
   };
 
+  // ─── SETTINGS ────────────────────────────────────────────────────────────────
+  const renderSettings = async () => {
+    document.getElementById('page-title').textContent = 'System Settings';
+    const content = document.getElementById('page-content');
+    showPageLoading('page-content');
+
+    try {
+      const data = await ApiClient.admin.getTeacherSignupCode();
+      const code = data.code || '';
+
+      content.innerHTML = `
+        <div class="card" style="max-width: 600px;">
+          <div class="card-header">
+            <h3 class="card-title">Registration Settings</h3>
+          </div>
+          <div class="card-body">
+            <form id="settings-form" class="modal-form" style="padding:0;">
+              <div class="form-group">
+                <label for="set-teacher-code">Teacher Signup Verification Code</label>
+                <div class="password-wrapper">
+                  <input type="password" id="set-teacher-code" value="${esc(code)}" placeholder="Enter security secret key" required />
+                  <button type="button" class="toggle-password" id="toggle-settings-pwd" aria-label="Toggle password visibility" style="top:50%; transform:translateY(-50%);">
+                    <svg id="settings-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.4rem;">
+                  This secret key is required when teachers register for a new account.
+                </p>
+              </div>
+
+              <div id="settings-error" class="alert alert-error hidden" style="margin-top:1rem;"></div>
+              <div id="settings-success" class="alert alert-success hidden" style="margin-top:1rem;"></div>
+
+              <div style="margin-top:1.5rem; display:flex; justify-content:flex-end;">
+                <button type="submit" class="btn btn-primary" id="settings-save-btn">
+                  <span class="btn-text">Save Settings</span>
+                  <span class="btn-spinner hidden"></span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      `;
+
+      // Password toggle click listener
+      document.getElementById('toggle-settings-pwd').addEventListener('click', () => {
+        const input = document.getElementById('set-teacher-code');
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+
+      // Submit listener
+      document.getElementById('settings-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('settings-save-btn');
+        const errEl = document.getElementById('settings-error');
+        const successEl = document.getElementById('settings-success');
+        const newCode = document.getElementById('set-teacher-code').value.trim();
+
+        errEl.classList.add('hidden');
+        successEl.classList.add('hidden');
+
+        if (!newCode) {
+          errEl.textContent = 'Verification code cannot be empty.';
+          errEl.classList.remove('hidden');
+          return;
+        }
+
+        setButtonLoading(btn, true);
+        try {
+          const res = await ApiClient.admin.setTeacherSignupCode(newCode);
+          if (res.dbWarning) {
+            Toast.warning(res.dbWarning);
+          } else {
+            Toast.success('Settings saved successfully!');
+          }
+          successEl.textContent = res.message;
+          successEl.classList.remove('hidden');
+        } catch (err) {
+          errEl.textContent = err.message;
+          errEl.classList.remove('hidden');
+        } finally {
+          setButtonLoading(btn, false);
+        }
+      });
+
+    } catch (err) {
+      content.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  };
+
   return {
     renderDashboard, renderStudents, renderTeachers, renderClasses,
-    renderSubjects, renderReport, renderRequests,
+    renderSubjects, renderReport, renderRequests, renderSettings,
     editStudent, deleteStudent,
     editUserModal, deleteUser,
     editClass, deleteClass,
