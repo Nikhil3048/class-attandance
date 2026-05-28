@@ -200,6 +200,7 @@ const App = (() => {
     const name            = document.getElementById('signup-name').value.trim();
     const email           = document.getElementById('signup-email').value.trim();
     const password        = document.getElementById('signup-password').value;
+    const confirmPassword = document.getElementById('signup-confirm-password').value;
     const class_id        = document.getElementById('signup-class').value;
     const registration_number = document.getElementById('signup-reg').value.trim();
     const subject_name    = document.getElementById('signup-subject').value.trim();
@@ -208,8 +209,20 @@ const App = (() => {
     errEl.classList.add('hidden');
     successEl.classList.add('hidden');
 
-    if (!name || !email || !password || !class_id) {
+    if (!name || !email || !password || !confirmPassword || !class_id) {
       errEl.textContent = 'Please fill all required fields.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (password.length < 6) {
+      errEl.textContent = 'Password must be at least 6 characters.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      errEl.textContent = 'Passwords do not match.';
       errEl.classList.remove('hidden');
       return;
     }
