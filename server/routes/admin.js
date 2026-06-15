@@ -87,6 +87,14 @@ router.put('/users/:id', async (req, res) => {
 router.delete('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Delete associated student record first if it exists (prevents orphaned student records)
+    const { error: studentDeleteError } = await supabaseAdmin
+      .from('students')
+      .delete()
+      .eq('user_id', id);
+    if (studentDeleteError) throw studentDeleteError;
+
     const { error: profileError } = await supabaseAdmin.from('users').delete().eq('id', id);
     if (profileError) throw profileError;
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
@@ -137,8 +145,30 @@ router.put('/classes/:id', async (req, res) => {
 
 router.delete('/classes/:id', async (req, res) => {
   try {
-    const { error } = await supabaseAdmin.from('classes').delete().eq('id', req.params.id);
-    if (error) throw error;
+    const { id } = req.params;
+
+    // 1. Fetch all student records under this class to retrieve user_ids
+    const { data: students, error: fetchError } = await supabaseAdmin
+      .from('students')
+      .select('user_id')
+      .eq('class_id', id);
+    if (fetchError) throw fetchError;
+
+    // 2. Delete the class (cascades to delete student records in students table)
+    const { error: deleteError } = await supabaseAdmin.from('classes').delete().eq('id', id);
+    if (deleteError) throw deleteError;
+
+    // 3. Delete auth users associated with those students (cascades to users table profile)
+    if (students && students.length > 0) {
+      for (const student of students) {
+        if (student.user_id) {
+          await supabaseAdmin.auth.admin.deleteUser(student.user_id).catch(err => {
+            console.error(`Failed to delete auth user ${student.user_id} on class deletion:`, err.message);
+          });
+        }
+      }
+    }
+
     res.json({ message: 'Class deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -274,8 +304,32 @@ router.put('/students/:id', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
   try {
-    const { error } = await supabaseAdmin.from('students').delete().eq('id', req.params.id);
-    if (error) throw error;
+    const { id } = req.params;
+
+    // 1. Get the student's user_id if they have a login account
+    const { data: student, error: fetchError } = await supabaseAdmin
+      .from('students')
+      .select('user_id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    // 2. Delete the student record (cascades to attendance)
+    const { error: deleteError } = await supabaseAdmin
+      .from('students')
+      .delete()
+      .eq('id', id);
+    if (deleteError) throw deleteError;
+
+    // 3. Delete the auth user if one exists (cascades to users table profile)
+    if (student && student.user_id) {
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(student.user_id);
+      if (authError) {
+        console.error(`Failed to delete auth user ${student.user_id}:`, authError.message);
+      }
+    }
+
     res.json({ message: 'Student deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

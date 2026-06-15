@@ -127,9 +127,31 @@ router.post('/class/:classId/students', async (req, res) => {
 router.delete('/class/:classId/students/:studentId', async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { error } = await supabaseAdmin
-      .from('students').delete().eq('id', studentId);
-    if (error) throw error;
+
+    // 1. Get the student's user_id if they have a login account
+    const { data: student, error: fetchError } = await supabaseAdmin
+      .from('students')
+      .select('user_id')
+      .eq('id', studentId)
+      .maybeSingle();
+
+    if (fetchError) throw fetchError;
+
+    // 2. Delete the student record (cascades to attendance)
+    const { error: deleteError } = await supabaseAdmin
+      .from('students')
+      .delete()
+      .eq('id', studentId);
+    if (deleteError) throw deleteError;
+
+    // 3. Delete the auth user if one exists (cascades to users table profile)
+    if (student && student.user_id) {
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(student.user_id);
+      if (authError) {
+        console.error(`Failed to delete auth user ${student.user_id}:`, authError.message);
+      }
+    }
+
     res.json({ message: 'Student removed successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
