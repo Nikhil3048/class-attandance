@@ -49,10 +49,11 @@ const ApiClient = (() => {
 
     // ── Admin ────────────────────────────────────────────────────────
     admin: {
-      getUsers:       (role)       => request('GET',    `/admin/users${role ? `?role=${role}` : ''}`),
-      createUser:     (data)       => request('POST',   '/admin/users', data),
-      updateUser:     (id, data)   => request('PUT',    `/admin/users/${id}`, data),
-      deleteUser:     (id)         => request('DELETE', `/admin/users/${id}`),
+      getUsers:           (role)       => request('GET',    `/admin/users${role ? `?role=${role}` : ''}`),
+      createUser:         (data)       => request('POST',   '/admin/users', data),
+      updateUser:         (id, data)   => request('PUT',    `/admin/users/${id}`, data),
+      updateUserPassword: (id, password) => request('PUT',  `/admin/users/${id}/password`, { password }),
+      deleteUser:         (id)         => request('DELETE', `/admin/users/${id}`),
 
       getClasses:     ()           => request('GET',    '/admin/classes'),
       createClass:    (data)       => request('POST',   '/admin/classes', data),

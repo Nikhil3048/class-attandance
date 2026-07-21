@@ -136,6 +136,7 @@ const AdminPages = (() => {
               <td>
                 <div style="display:flex;gap:0.4rem;">
                   <button class="btn btn-secondary btn-sm btn-icon" onclick="AdminPages.editStudent('${s.id}')" title="Edit">${editIcon()}</button>
+                  ${s.user_id ? `<button class="btn btn-sm btn-icon" onclick="AdminPages.openChangePasswordModal('${s.user_id}','${esc(s.name)}')" title="Change Password" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">${keyIcon()}</button>` : ''}
                   <button class="btn btn-danger btn-sm btn-icon" onclick="AdminPages.deleteStudent('${s.id}','${esc(s.name)}')" title="Delete">${trashIcon()}</button>
                 </div>
               </td>
@@ -228,7 +229,7 @@ const AdminPages = (() => {
               <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Actions</th></tr></thead>
               <tbody>
                 ${teachers.length === 0
-                  ? `<tr><td colspan="4"><div class="table-empty">${userCheckIcon()}<p>No teachers yet</p></div></td></tr>`
+                  ? `<tr><td colspan="5"><div class="table-empty">${userCheckIcon()}<p>No teachers yet</p></div></td></tr>`
                   : teachers.map((t, i) => `
                     <tr>
                       <td style="color:var(--text-muted)">${i+1}</td>
@@ -237,6 +238,7 @@ const AdminPages = (() => {
                       <td>
                         <div style="display:flex;gap:0.4rem;">
                           <button class="btn btn-secondary btn-sm btn-icon" onclick="AdminPages.editUserModal('${t.id}','teacher')" title="Edit">${editIcon()}</button>
+                          <button class="btn btn-warning btn-sm btn-icon" onclick="AdminPages.openChangePasswordModal('${t.id}','${esc(t.name)}')" title="Change Password" style="background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);">${keyIcon()}</button>
                           <button class="btn btn-danger btn-sm btn-icon" onclick="AdminPages.deleteUser('${t.id}','${esc(t.name)}')" title="Delete">${trashIcon()}</button>
                         </div>
                       </td>
@@ -310,6 +312,66 @@ const AdminPages = (() => {
       Toast.success('User deleted');
       renderTeachers();
     } catch(err) { Toast.error(err.message); }
+  };
+
+  // ─── CHANGE PASSWORD (Admin → Student or Teacher) ─────────────────────────
+  const openChangePasswordModal = (userId, userName) => {
+    Modal.open(`Change Password — ${userName}`, `
+      <form class="modal-form" id="pwd-form">
+        <div class="form-group">
+          <label>New Password *</label>
+          <div class="password-wrapper">
+            <input type="password" id="new-pwd" placeholder="Min 6 characters" required />
+            <button type="button" class="toggle-password" id="toggle-new-pwd" aria-label="Toggle password visibility" style="top:50%;transform:translateY(-50%);">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password *</label>
+          <input type="password" id="confirm-pwd" placeholder="Repeat new password" required />
+        </div>
+        <div id="pwd-modal-error"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="pwd-save-btn">
+            <span class="btn-text">Update Password</span>
+            <span class="btn-spinner hidden"></span>
+          </button>
+        </div>
+      </form>`);
+
+    document.getElementById('toggle-new-pwd').addEventListener('click', () => {
+      const input = document.getElementById('new-pwd');
+      input.type = input.type === 'password' ? 'text' : 'password';
+    });
+
+    document.getElementById('pwd-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('pwd-save-btn');
+      const errEl = document.getElementById('pwd-modal-error');
+      const newPwd = document.getElementById('new-pwd').value;
+      const confirmPwd = document.getElementById('confirm-pwd').value;
+
+      errEl.innerHTML = '';
+
+      if (newPwd.length < 6) {
+        errEl.innerHTML = `<div class="alert alert-error">Password must be at least 6 characters</div>`; return;
+      }
+      if (newPwd !== confirmPwd) {
+        errEl.innerHTML = `<div class="alert alert-error">Passwords do not match</div>`; return;
+      }
+
+      setButtonLoading(btn, true);
+      try {
+        await ApiClient.admin.updateUserPassword(userId, newPwd);
+        Modal.close();
+        Toast.success(`Password updated for ${userName}!`);
+      } catch(err) {
+        errEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+        setButtonLoading(btn, false);
+      }
+    });
   };
 
   // ─── CLASSES ─────────────────────────────────────────────────────────────────
@@ -851,7 +913,7 @@ const AdminPages = (() => {
     renderDashboard, renderStudents, renderTeachers, renderClasses,
     renderSubjects, renderReport, renderRequests, renderSettings,
     editStudent, deleteStudent,
-    editUserModal, deleteUser,
+    editUserModal, deleteUser, openChangePasswordModal,
     editClass, deleteClass,
     editSubjectModal, deleteSubject,
     approveRequest, confirmApprove, rejectRequest, confirmReject

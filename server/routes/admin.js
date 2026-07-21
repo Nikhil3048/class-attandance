@@ -81,6 +81,31 @@ router.put('/users/:id', async (req, res) => {
 });
 
 /**
+ * PUT /api/admin/users/:id/password
+ * Update a user's password (admin only)
+ */
+router.put('/users/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+      return res.status(400).json({ error: 'password is required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { password });
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({ message: 'Password updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * DELETE /api/admin/users/:id
  * Delete a user account
  */
