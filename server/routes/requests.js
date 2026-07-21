@@ -28,20 +28,7 @@ router.post('/', async (req, res) => {
     }
 
     if (role === 'teacher') {
-      let expectedCode = process.env.TEACHER_SIGNUP_CODE || 'TeacherSecure2026!';
-      try {
-        const { data, error } = await supabaseAdmin
-          .from('settings')
-          .select('value')
-          .eq('key', 'teacher_signup_code')
-          .maybeSingle();
-        if (!error && data && data.value) {
-          expectedCode = data.value;
-        }
-      } catch (err) {
-        console.error('Failed to get teacher signup code from settings table:', err.message);
-      }
-
+      const expectedCode = await getSetting('teacher_signup_code', 'TeacherSecure2026!');
       if (!teacher_code || teacher_code !== expectedCode) {
         return res.status(403).json({ error: 'Invalid Teacher Signup Code' });
       }
