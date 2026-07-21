@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabaseAdmin } = require('../config/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { getSetting } = require('../config/settingsManager');
 
 // ─── PUBLIC: Get classes list (for signup form, no auth needed) ───────────────
 router.get('/classes', async (req, res) => {
