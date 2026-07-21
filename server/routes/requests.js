@@ -30,7 +30,9 @@ router.post('/', async (req, res) => {
 
     if (role === 'teacher') {
       const expectedCode = await getSetting('teacher_signup_code', 'TeacherSecure2026!');
-      if (!teacher_code || teacher_code !== expectedCode) {
+      const cleanInput = String(teacher_code || '').trim();
+      const cleanExpected = String(expectedCode || '').trim();
+      if (!cleanInput || cleanInput !== cleanExpected) {
         return res.status(403).json({ error: 'Invalid Teacher Signup Code' });
       }
     }

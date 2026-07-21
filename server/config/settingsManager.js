@@ -72,16 +72,16 @@ async function getSetting(key, defaultValue = '') {
   // 2. Try local settings.json
   const local = getLocalSettings();
   if (local[key] !== undefined && local[key] !== null && local[key] !== '') {
-    return local[key];
+    return String(local[key]).trim();
   }
 
   // 3. Try process.env
   const envKey = key.toUpperCase();
   if (process.env[envKey]) {
-    return process.env[envKey];
+    return String(process.env[envKey]).trim();
   }
 
-  return defaultValue;
+  return String(defaultValue).trim();
 }
 
 /**
