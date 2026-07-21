@@ -398,6 +398,7 @@ const { getSetting, setSetting } = require('../config/settingsManager');
  */
 router.get('/settings/teacher-signup-code', async (req, res) => {
   try {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     const value = await getSetting('teacher_signup_code', 'TeacherSecure2026!');
     res.json({ code: value });
   } catch (err) {

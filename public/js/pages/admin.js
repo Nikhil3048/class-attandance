@@ -889,6 +889,7 @@ const AdminPages = (() => {
         setButtonLoading(btn, true);
         try {
           const res = await ApiClient.admin.setTeacherSignupCode(newCode);
+          document.getElementById('set-teacher-code').value = newCode;
           Toast.success('Teacher signup code updated successfully!');
           successEl.textContent = 'Teacher signup code updated successfully';
           successEl.classList.remove('hidden');

@@ -14,7 +14,7 @@ const ApiClient = (() => {
   });
 
   const request = async (method, path, body = null) => {
-    const opts = { method, headers: headers() };
+    const opts = { method, headers: headers(), cache: 'no-store' };
     if (body) opts.body = JSON.stringify(body);
 
     try {
