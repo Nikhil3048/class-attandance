@@ -832,11 +832,11 @@ const AdminPages = (() => {
             <h3 class="card-title">Registration Settings</h3>
           </div>
           <div class="card-body">
-            <form id="settings-form" class="modal-form" style="padding:0;">
+            <form id="settings-form" class="modal-form" style="padding:0;" autocomplete="off">
               <div class="form-group">
                 <label for="set-teacher-code">Teacher Signup Verification Code</label>
                 <div class="password-wrapper">
-                  <input type="password" id="set-teacher-code" value="${esc(code)}" placeholder="Enter security secret key" required />
+                  <input type="text" id="set-teacher-code" name="teacher_verification_code_field" value="${esc(code)}" autocomplete="new-password" placeholder="Enter security secret key" required />
                   <button type="button" class="toggle-password" id="toggle-settings-pwd" aria-label="Toggle password visibility" style="top:50%; transform:translateY(-50%);">
                     <svg id="settings-eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
