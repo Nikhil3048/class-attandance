@@ -57,12 +57,14 @@ CREATE TABLE IF NOT EXISTS public.attendance (
 );
 
 -- ─── INDEXES ──────────────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_attendance_student   ON public.attendance(student_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_subject   ON public.attendance(subject_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_date      ON public.attendance(date);
-CREATE INDEX IF NOT EXISTS idx_students_class       ON public.students(class_id);
-CREATE INDEX IF NOT EXISTS idx_subjects_class       ON public.subjects(class_id);
-CREATE INDEX IF NOT EXISTS idx_subjects_teacher     ON public.subjects(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_student              ON public.attendance(student_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_subject              ON public.attendance(subject_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_date                 ON public.attendance(date);
+CREATE INDEX IF NOT EXISTS idx_attendance_student_subject_date ON public.attendance(student_id, subject_id, date);
+CREATE INDEX IF NOT EXISTS idx_students_class                  ON public.students(class_id);
+CREATE INDEX IF NOT EXISTS idx_students_user_id                ON public.students(user_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_class                  ON public.subjects(class_id);
+CREATE INDEX IF NOT EXISTS idx_subjects_teacher                ON public.subjects(teacher_id);
 
 -- ─── ROW LEVEL SECURITY ───────────────────────────────────────────────────────
 -- For this MVP, we use the service role key on the server side, 

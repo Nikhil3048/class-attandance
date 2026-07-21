@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 
+const compression = require('compression');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const teacherRoutes = require('./routes/teacher');
@@ -21,14 +22,20 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' }
 });
 
+// Compression middleware (Gzip/Brotli) to reduce response sizes
+app.use(compression());
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(limiter);
 
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static files from public directory with 1-day cache for assets
+app.use(express.static(path.join(__dirname, '../public'), {
+  maxAge: '1d',
+  etag: true
+}));
 
 // API Routes
 app.use('/api/auth', authRoutes);
