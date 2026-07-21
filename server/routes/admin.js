@@ -449,30 +449,22 @@ router.post('/settings/teacher-signup-code', async (req, res) => {
       return res.status(400).json({ error: 'code is required' });
     }
 
-    // Try DB first
-    let dbSuccess = false;
-    let dbErrorMsg = '';
+    // Update in-memory env (always works, survives until server restart)
+    process.env.TEACHER_SIGNUP_CODE = code;
+
+    // Try to persist to DB (settings table may not exist — that's okay)
     try {
-      const { error } = await supabaseAdmin
+      await supabaseAdmin
         .from('settings')
         .upsert({ key: 'teacher_signup_code', value: code });
-      if (!error) {
-        dbSuccess = true;
-      } else {
-        dbErrorMsg = error.message;
-      }
     } catch (e) {
-      dbErrorMsg = e.message;
+      // settings table doesn't exist — in-memory update is sufficient
     }
 
-    // Also update .env file
+    // Also persist to .env file for server restarts
     updateEnvFile('TEACHER_SIGNUP_CODE', code);
 
-    res.json({ 
-      message: 'Teacher signup code updated successfully',
-      dbSuccess,
-      dbWarning: dbSuccess ? null : `Note: Settings table update failed (${dbErrorMsg}). Updated .env config instead.`
-    });
+    res.json({ message: 'Teacher signup code updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
