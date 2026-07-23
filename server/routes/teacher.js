@@ -5,6 +5,34 @@ const { authenticate, requireRole } = require('../middleware/auth');
 
 router.use(authenticate, requireRole('teacher', 'admin'));
 
+/**
+ * Helper to verify teacher is assigned to a subject (admins bypass)
+ */
+async function checkSubjectAccess(userId, userRole, subjectId) {
+  if (userRole === 'admin') return true;
+  const { data } = await supabaseAdmin
+    .from('subjects')
+    .select('id')
+    .eq('id', subjectId)
+    .eq('teacher_id', userId)
+    .maybeSingle();
+  return !!data;
+}
+
+/**
+ * Helper to verify teacher teaches at least one subject in a class (admins bypass)
+ */
+async function checkClassAccess(userId, userRole, classId) {
+  if (userRole === 'admin') return true;
+  const { data } = await supabaseAdmin
+    .from('subjects')
+    .select('id')
+    .eq('class_id', classId)
+    .eq('teacher_id', userId)
+    .limit(1);
+  return Array.isArray(data) && data.length > 0;
+}
+
 // GET /api/teacher/subjects
 router.get('/subjects', async (req, res) => {
   try {
@@ -24,6 +52,12 @@ router.get('/subjects', async (req, res) => {
 router.get('/students/:subjectId', async (req, res) => {
   try {
     const { subjectId } = req.params;
+
+    const hasAccess = await checkSubjectAccess(req.user.id, req.user.role, subjectId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You are not assigned to this subject' });
+    }
+
     const { data: subject, error: subjectError } = await supabaseAdmin
       .from('subjects').select('class_id').eq('id', subjectId).single();
     if (subjectError) throw subjectError;
@@ -57,6 +91,12 @@ router.get('/students/:subjectId', async (req, res) => {
 router.get('/class/:classId/students', async (req, res) => {
   try {
     const { classId } = req.params;
+
+    const hasAccess = await checkClassAccess(req.user.id, req.user.role, classId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You are not authorized for this class' });
+    }
+
     const { data, error } = await supabaseAdmin
       .from('students')
       .select('id, name, registration_number, user_id, created_at')
@@ -86,6 +126,12 @@ router.get('/class/:classId/students', async (req, res) => {
 router.post('/class/:classId/students', async (req, res) => {
   try {
     const { classId } = req.params;
+
+    const hasAccess = await checkClassAccess(req.user.id, req.user.role, classId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You are not authorized for this class' });
+    }
+
     const { name, registration_number, create_login, email, password } = req.body;
 
     if (!name || !registration_number) {
@@ -95,14 +141,19 @@ router.post('/class/:classId/students', async (req, res) => {
     let user_id = null;
 
     if (create_login && email && password) {
+      const cleanEmail = String(email).trim().toLowerCase();
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters' });
+      }
+
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email, password, email_confirm: true
+        email: cleanEmail, password, email_confirm: true
       });
       if (authError) return res.status(400).json({ error: authError.message });
 
       const { error: profileError } = await supabaseAdmin
         .from('users')
-        .insert({ id: authData.user.id, name, email, role: 'student' });
+        .insert({ id: authData.user.id, name: String(name).trim(), email: cleanEmail, role: 'student' });
 
       if (profileError) {
         await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
@@ -113,7 +164,12 @@ router.post('/class/:classId/students', async (req, res) => {
 
     const { data, error } = await supabaseAdmin
       .from('students')
-      .insert({ name, registration_number, class_id: classId, user_id })
+      .insert({ 
+        name: String(name).trim(), 
+        registration_number: String(registration_number).trim(), 
+        class_id: classId, 
+        user_id 
+      })
       .select().single();
     if (error) throw error;
 
@@ -126,16 +182,24 @@ router.post('/class/:classId/students', async (req, res) => {
 // DELETE /api/teacher/class/:classId/students/:studentId — remove student
 router.delete('/class/:classId/students/:studentId', async (req, res) => {
   try {
-    const { studentId } = req.params;
+    const { classId, studentId } = req.params;
+
+    const hasAccess = await checkClassAccess(req.user.id, req.user.role, classId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You are not authorized for this class' });
+    }
 
     // 1. Get the student's user_id if they have a login account
     const { data: student, error: fetchError } = await supabaseAdmin
       .from('students')
-      .select('user_id')
+      .select('user_id, class_id')
       .eq('id', studentId)
       .maybeSingle();
 
-    if (fetchError) throw fetchError;
+    if (fetchError || !student) return res.status(404).json({ error: 'Student not found' });
+    if (student.class_id !== classId) {
+      return res.status(400).json({ error: 'Student does not belong to specified class' });
+    }
 
     // 2. Delete the student record (cascades to attendance)
     const { error: deleteError } = await supabaseAdmin
@@ -162,6 +226,12 @@ router.delete('/class/:classId/students/:studentId', async (req, res) => {
 router.get('/attendance/:subjectId', async (req, res) => {
   try {
     const { subjectId } = req.params;
+
+    const hasAccess = await checkSubjectAccess(req.user.id, req.user.role, subjectId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You are not assigned to this subject' });
+    }
+
     const { date, from_date, to_date } = req.query;
 
     let query = supabaseAdmin
@@ -186,6 +256,11 @@ router.get('/attendance/:subjectId', async (req, res) => {
 router.get('/attendance/summary/:subjectId', async (req, res) => {
   try {
     const { subjectId } = req.params;
+
+    const hasAccess = await checkSubjectAccess(req.user.id, req.user.role, subjectId);
+    if (!hasAccess) {
+      return res.status(403).json({ error: 'Access denied: You are not assigned to this subject' });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('attendance')

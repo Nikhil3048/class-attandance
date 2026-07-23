@@ -1,18 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const { supabase, supabaseAdmin } = require('../config/supabase');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, requireRole } = require('../middleware/auth');
 
 /**
  * POST /api/auth/register
- * Register a new user with role (admin creates teachers/students)
+ * Register a new user with role (Admin authorization required)
  */
-router.post('/register', async (req, res) => {
+router.post('/register', authenticate, requireRole('admin'), async (req, res) => {
   try {
     const { email, password, name, role } = req.body;
 
     if (!email || !password || !name || !role) {
       return res.status(400).json({ error: 'email, password, name, and role are required' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanName = String(name).trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    if (password.length < 6 || password.length > 128) {
+      return res.status(400).json({ error: 'Password must be between 6 and 128 characters long' });
     }
 
     const validRoles = ['admin', 'teacher', 'student'];
@@ -22,7 +33,7 @@ router.post('/register', async (req, res) => {
 
     // Create auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
+      email: cleanEmail,
       password,
       email_confirm: true
     });
@@ -34,7 +45,7 @@ router.post('/register', async (req, res) => {
     // Insert into users table
     const { error: profileError } = await supabaseAdmin
       .from('users')
-      .insert({ id: authData.user.id, name, email, role });
+      .insert({ id: authData.user.id, name: cleanName, email: cleanEmail, role });
 
     if (profileError) {
       // Rollback auth user creation
@@ -61,7 +72,9 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const cleanEmail = String(email).trim().toLowerCase();
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
 
     if (error) {
       return res.status(401).json({ error: 'Invalid email or password' });

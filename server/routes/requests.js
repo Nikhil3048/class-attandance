@@ -1,8 +1,47 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { supabaseAdmin } = require('../config/supabase');
 const { authenticate, requireRole } = require('../middleware/auth');
 const { getSetting } = require('../config/settingsManager');
+
+// Helper to encrypt/decrypt temporary sensitive data stored briefly in DB
+const ENCRYPTION_KEY = crypto.scryptSync(
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.JWT_SECRET || 'AttendanceIQ-Secure-Secret-Key-2026',
+  'attendance-iq-salt',
+  32
+);
+
+function encryptText(text) {
+  if (!text) return '';
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const tag = cipher.getAuthTag().toString('hex');
+  return `enc:${iv.toString('hex')}:${tag}:${encrypted}`;
+}
+
+function decryptText(encryptedText) {
+  if (!encryptedText) return '';
+  if (!encryptedText.startsWith('enc:')) return encryptedText; // Fallback for legacy plain records
+  try {
+    const parts = encryptedText.split(':');
+    if (parts.length !== 4) return encryptedText;
+    const iv = Buffer.from(parts[1], 'hex');
+    const tag = Buffer.from(parts[2], 'hex');
+    const encrypted = parts[3];
+    const decipher = crypto.createDecipheriv('aes-256-gcm', ENCRYPTION_KEY, iv);
+    decipher.setAuthTag(tag);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (err) {
+    console.error('Decryption failed for signup request password:', err);
+    return '';
+  }
+}
 
 // ─── PUBLIC: Get classes list (for signup form, no auth needed) ───────────────
 router.get('/classes', async (req, res) => {
@@ -12,7 +51,7 @@ router.get('/classes', async (req, res) => {
     if (error) throw error;
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to fetch classes' });
   }
 });
 
@@ -24,8 +63,20 @@ router.post('/', async (req, res) => {
     if (!name || !email || !password || !class_id || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanName = String(name).trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    if (password.length < 6 || password.length > 128) {
+      return res.status(400).json({ error: 'Password must be between 6 and 128 characters' });
+    }
+
+    if (!['student', 'teacher'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role for signup request' });
     }
 
     if (role === 'teacher') {
@@ -41,7 +92,7 @@ router.post('/', async (req, res) => {
     const { data: existing } = await supabaseAdmin
       .from('signup_requests')
       .select('id, status')
-      .eq('email', email)
+      .eq('email', cleanEmail)
       .eq('status', 'pending')
       .maybeSingle();
 
@@ -51,16 +102,24 @@ router.post('/', async (req, res) => {
 
     // Check email not already registered
     const { data: existingUser } = await supabaseAdmin
-      .from('users').select('id').eq('email', email).maybeSingle();
+      .from('users').select('id').eq('email', cleanEmail).maybeSingle();
     if (existingUser) {
       return res.status(409).json({ error: 'This email is already registered. Please sign in.' });
     }
 
+    // Securely encrypt temporary password before storing
+    const encryptedPassword = encryptText(password);
+
     const { data, error } = await supabaseAdmin
       .from('signup_requests')
       .insert({ 
-        name, email, temp_password: password, class_id, 
-        role, registration_number, subject_name, 
+        name: cleanName, 
+        email: cleanEmail, 
+        temp_password: encryptedPassword, 
+        class_id, 
+        role, 
+        registration_number: registration_number ? String(registration_number).trim() : null, 
+        subject_name: subject_name ? String(subject_name).trim() : null, 
         status: 'pending' 
       })
       .select('id').single();
@@ -72,7 +131,7 @@ router.post('/', async (req, res) => {
       requestId: data.id
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message || 'Failed to submit signup request' });
   }
 });
 
@@ -104,7 +163,14 @@ router.get('/', async (req, res) => {
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json(data);
+
+    // Sanitize temp_password out of response so encrypted hashes are not sent to frontend
+    const sanitizedData = (data || []).map(r => {
+      const { temp_password, ...rest } = r;
+      return rest;
+    });
+
+    res.json(sanitizedData);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -149,13 +215,31 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
       return res.status(400).json({ error: `Request is already ${request.status}` });
     }
 
-    // Extract role from request (default to student for older requests)
     const reqRole = request.role || 'student';
+
+    // Teacher Scope Verification: Teachers can ONLY approve student requests for their classes
+    if (req.user.role === 'teacher') {
+      if (reqRole !== 'student') {
+        return res.status(403).json({ error: 'Teachers can only approve student signup requests' });
+      }
+      const { data: subjects } = await supabaseAdmin
+        .from('subjects').select('class_id').eq('teacher_id', req.user.id);
+      const teacherClassIds = (subjects || []).map(s => s.class_id);
+      if (!teacherClassIds.includes(request.class_id)) {
+        return res.status(403).json({ error: 'You are not authorized to approve requests for this class' });
+      }
+    }
+
+    // Decrypt stored temporary password
+    const rawPassword = decryptText(request.temp_password);
+    if (!rawPassword) {
+      return res.status(400).json({ error: 'Unable to decrypt password for this request' });
+    }
 
     // 1. Create Supabase auth user
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: request.email,
-      password: request.temp_password,
+      password: rawPassword,
       email_confirm: true
     });
     if (authError) return res.status(400).json({ error: authError.message });
@@ -183,12 +267,10 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
         .maybeSingle();
 
       if (existingSubject) {
-        // Assign this teacher to the existing subject
         await supabaseAdmin.from('subjects')
           .update({ teacher_id: authData.user.id })
           .eq('id', existingSubject.id);
       } else {
-        // Create new subject
         await supabaseAdmin.from('subjects')
           .insert({ 
             subject_name: subjectName, 
@@ -216,14 +298,14 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
       successMessage = `${request.name} approved! Account created with reg. no. ${regNo}`;
     }
 
-    // 4. Mark request as approved and clear password
+    // 4. Mark request as approved and clear password completely
     await supabaseAdmin
       .from('signup_requests')
       .update({
         status: 'approved',
         reviewed_by: req.user.id,
         reviewed_at: new Date().toISOString(),
-        temp_password: ''  // clear stored password
+        temp_password: ''  // clear temporary password
       })
       .eq('id', id);
 
@@ -240,11 +322,24 @@ router.put('/:id/reject', requireRole('admin', 'teacher'), async (req, res) => {
     const { reason } = req.body;
 
     const { data: request, error: fetchError } = await supabaseAdmin
-      .from('signup_requests').select('id, status, name').eq('id', id).single();
+      .from('signup_requests').select('id, class_id, role, status, name').eq('id', id).single();
 
     if (fetchError || !request) return res.status(404).json({ error: 'Request not found' });
     if (request.status !== 'pending') {
       return res.status(400).json({ error: `Request is already ${request.status}` });
+    }
+
+    // Teacher Scope Verification: Teachers can ONLY reject student requests for their classes
+    if (req.user.role === 'teacher') {
+      if (request.role !== 'student') {
+        return res.status(403).json({ error: 'Teachers can only review student signup requests' });
+      }
+      const { data: subjects } = await supabaseAdmin
+        .from('subjects').select('class_id').eq('teacher_id', req.user.id);
+      const teacherClassIds = (subjects || []).map(s => s.class_id);
+      if (!teacherClassIds.includes(request.class_id)) {
+        return res.status(403).json({ error: 'You are not authorized to reject requests for this class' });
+      }
     }
 
     await supabaseAdmin
@@ -253,8 +348,8 @@ router.put('/:id/reject', requireRole('admin', 'teacher'), async (req, res) => {
         status: 'rejected',
         reviewed_by: req.user.id,
         reviewed_at: new Date().toISOString(),
-        reject_reason: reason || null,
-        temp_password: ''
+        reject_reason: reason ? String(reason).trim() : null,
+        temp_password: '' // clear temporary password
       })
       .eq('id', id);
 

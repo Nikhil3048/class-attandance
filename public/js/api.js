@@ -114,12 +114,6 @@ const ApiClient = (() => {
       clear:  (data)  => request('DELETE', '/attendance/clear', data)
     },
 
-    // ── SQL Editor (Admin only) ──────────────────────────────────────
-    sqlEditor: {
-      execute: (sql)  => request('POST', '/sql-editor/execute', { sql }),
-      getTables: ()   => request('GET',  '/sql-editor/tables')
-    },
-
     // ── Signup Requests ──────────────────────────────────────────────
     requests: {
       getClasses: () => fetch('/api/requests/classes').then(r => r.json()),
