@@ -8,12 +8,33 @@ const App = (() => {
   let currentPage = null;
   let refreshTimer = null;
 
+  const hideLoadingOverlay = () => {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+      overlay.classList.add('fade-out');
+      setTimeout(() => overlay.remove(), 400);
+    }
+  };
+
+  let configPromise = ApiClient.get('/auth/config').catch(() => null);
+
   // ─── INIT ─────────────────────────────────────────────────────────────────────
   const init = async () => {
     Modal.init();
 
     // Handle Google OAuth redirect callback
     const hash = window.location.hash;
+    if (hash && hash.includes('error=')) {
+      const params = new URLSearchParams(hash.replace('#', '?'));
+      const errorDesc = params.get('error_description') || 'Google authentication failed.';
+      window.history.replaceState(null, null, ' ');
+      clearSession();
+      showAuth();
+      Toast.error(decodeURIComponent(errorDesc).replace(/\+/g, ' '));
+      hideLoadingOverlay();
+      return;
+    }
+
     if (hash && hash.includes('access_token=')) {
       try {
         const params = new URLSearchParams(hash.replace('#', '?'));
@@ -25,7 +46,7 @@ const App = (() => {
         if (refreshToken) localStorage.setItem('att_refresh_token', refreshToken);
         localStorage.setItem('att_expires_at', expiresAt.toString());
 
-        // Clear hash from URL
+        // Clear hash from URL immediately
         window.history.replaceState(null, null, ' ');
 
         const userProfile = await ApiClient.get('/auth/me');
@@ -37,26 +58,20 @@ const App = (() => {
         loadRequestBadge();
         navigate('dashboard');
         Toast.success(`Welcome back, ${userProfile.name}!`);
+        hideLoadingOverlay();
         return;
       } catch (err) {
         clearSession();
         showAuth();
         const errEl = document.getElementById('auth-error');
         if (errEl) {
-          errEl.textContent = err.message || 'Google account not registered/approved.';
+          errEl.textContent = err.message || 'Google account sign-in failed.';
           errEl.classList.remove('hidden');
         }
-        Toast.error(err.message || 'Google account profile not found.');
+        Toast.error(err.message || 'Google account profile error.');
+        hideLoadingOverlay();
         return;
       }
-    }
-
-    // Fetch project config (exposes Supabase URL)
-    let config = null;
-    try {
-      config = await ApiClient.get('/auth/config');
-    } catch (err) {
-      console.error('Failed to load server configuration:', err);
     }
 
     // Check for saved session
@@ -83,17 +98,28 @@ const App = (() => {
     document.getElementById('mobile-menu-btn').addEventListener('click', openSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
 
-    // Google login click listener
+    // Google login click listener (Instant execution)
     const googleBtn = document.getElementById('google-login-btn');
     if (googleBtn) {
-      googleBtn.addEventListener('click', () => {
-        if (!config || !config.supabaseUrl) {
-          Toast.error('Server configuration not loaded. Please try again.');
-          return;
+      googleBtn.addEventListener('click', async () => {
+        try {
+          googleBtn.style.pointerEvents = 'none';
+          googleBtn.style.opacity = '0.7';
+          const config = await configPromise;
+          if (!config || !config.supabaseUrl) {
+            googleBtn.style.pointerEvents = 'auto';
+            googleBtn.style.opacity = '1';
+            Toast.error('Server configuration missing SUPABASE_URL.');
+            return;
+          }
+          const supabaseUrl = config.supabaseUrl;
+          const redirectTo = window.location.origin + '/';
+          window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+        } catch (err) {
+          googleBtn.style.pointerEvents = 'auto';
+          googleBtn.style.opacity = '1';
+          Toast.error('Failed to start Google Sign-In. Please refresh the page.');
         }
-        const supabaseUrl = config.supabaseUrl;
-        const redirectTo = window.location.origin + '/';
-        window.location.href = `${supabaseUrl}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
       });
     }
 
@@ -104,11 +130,7 @@ const App = (() => {
     });
 
     // Hide loading overlay
-    setTimeout(() => {
-      const overlay = document.getElementById('loading-overlay');
-      overlay.classList.add('fade-out');
-      setTimeout(() => overlay.remove(), 400);
-    }, 600);
+    setTimeout(hideLoadingOverlay, 600);
 
     // Signup form
     document.getElementById('signup-form').addEventListener('submit', handleSignup);

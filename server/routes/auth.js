@@ -157,24 +157,15 @@ router.get('/config', (req, res) => {
 
 /**
  * GET /api/auth/me
- * Fetch logged-in user profile from users table
+ * Fetch logged-in user profile attached by authenticate middleware
  */
-router.get('/me', authenticate, async (req, res) => {
-  try {
-    const { data: profile, error } = await supabaseAdmin
-      .from('users')
-      .select('id, name, email, role')
-      .eq('id', req.user.id)
-      .single();
-
-    if (error || !profile) {
-      return res.status(404).json({ error: 'User profile not found' });
-    }
-
-    res.json(profile);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+router.get('/me', authenticate, (req, res) => {
+  res.json({
+    id: req.user.id,
+    name: req.user.name,
+    email: req.user.email,
+    role: req.user.role
+  });
 });
 
 module.exports = router;
