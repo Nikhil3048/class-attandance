@@ -97,6 +97,8 @@ const App = (() => {
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('mobile-menu-btn').addEventListener('click', openSidebar);
     document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+    if (sidebarToggleBtn) sidebarToggleBtn.addEventListener('click', toggleSidebar);
 
     // Google login click listener (Instant execution)
     const googleBtn = document.getElementById('google-login-btn');
@@ -475,6 +477,15 @@ const App = (() => {
     document.body.style.overflow = '';
   };
 
+  const toggleSidebar = () => {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar.classList.contains('open')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  };
+
   // ─── REQUEST BADGE ────────────────────────────────────────────────────────────
   const loadRequestBadge = async () => {
     const role = currentUser?.role;
@@ -485,7 +496,7 @@ const App = (() => {
     } catch {}
   };
 
-  return { init, navigate, currentUser: () => currentUser, showLoginTab, showSignupTab };
+  return { init, navigate, currentUser: () => currentUser, showLoginTab, showSignupTab, openSidebar, closeSidebar, toggleSidebar };
 })();
 
 // Global helper used by admin.js and teacher.js renderRequests

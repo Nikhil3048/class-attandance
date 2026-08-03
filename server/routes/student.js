@@ -11,13 +11,20 @@ router.use(authenticate, requireRole('student', 'admin'));
  */
 router.get('/profile', async (req, res) => {
   try {
-    const { data, error } = await supabaseAdmin
+    const { data } = await supabaseAdmin
       .from('students')
       .select('*, classes(class_name)')
       .eq('user_id', req.user.id)
-      .single();
-    if (error) throw error;
-    res.json(data);
+      .maybeSingle();
+
+    if (data) return res.json(data);
+
+    res.json({
+      id: null,
+      name: req.user.name || 'Student',
+      registration_number: 'N/A',
+      classes: { class_name: 'Unassigned' }
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -29,13 +36,13 @@ router.get('/profile', async (req, res) => {
  */
 router.get('/attendance', async (req, res) => {
   try {
-    // First get the student record
-    const { data: student, error: studentError } = await supabaseAdmin
+    const { data: student } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('user_id', req.user.id)
-      .single();
-    if (studentError) throw studentError;
+      .maybeSingle();
+
+    if (!student) return res.json([]);
 
     const { from_date, to_date, subject_id } = req.query;
 
@@ -51,7 +58,7 @@ router.get('/attendance', async (req, res) => {
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json(data);
+    res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -63,12 +70,13 @@ router.get('/attendance', async (req, res) => {
  */
 router.get('/attendance/summary', async (req, res) => {
   try {
-    const { data: student, error: studentError } = await supabaseAdmin
+    const { data: student } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('user_id', req.user.id)
-      .single();
-    if (studentError) throw studentError;
+      .maybeSingle();
+
+    if (!student) return res.json([]);
 
     const { data, error } = await supabaseAdmin
       .from('attendance')
@@ -78,7 +86,7 @@ router.get('/attendance/summary', async (req, res) => {
 
     // Group by subject
     const summaryMap = {};
-    data.forEach(record => {
+    (data || []).forEach(record => {
       const sid = record.subject_id;
       if (!summaryMap[sid]) {
         summaryMap[sid] = {
@@ -110,12 +118,13 @@ router.get('/attendance/summary', async (req, res) => {
  */
 router.get('/attendance/monthly', async (req, res) => {
   try {
-    const { data: student, error: studentError } = await supabaseAdmin
+    const { data: student } = await supabaseAdmin
       .from('students')
       .select('id')
       .eq('user_id', req.user.id)
-      .single();
-    if (studentError) throw studentError;
+      .maybeSingle();
+
+    if (!student) return res.json([]);
 
     const { data, error } = await supabaseAdmin
       .from('attendance')
@@ -126,7 +135,7 @@ router.get('/attendance/monthly', async (req, res) => {
 
     // Group by month
     const monthlyMap = {};
-    data.forEach(record => {
+    (data || []).forEach(record => {
       const monthKey = record.date.substring(0, 7); // YYYY-MM
       if (!monthlyMap[monthKey]) {
         monthlyMap[monthKey] = { month: monthKey, total: 0, present: 0 };
