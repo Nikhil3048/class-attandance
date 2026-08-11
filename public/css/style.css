@@ -658,6 +658,7 @@ tbody tr { transition: background var(--transition); }
 .badge-absent  { background: var(--danger-bg);  color: var(--danger); }
 .badge-warning { background: var(--warning-bg); color: var(--warning); }
 .badge-info    { background: var(--info-bg);    color: var(--info); }
+.badge-le      { background: rgba(236,72,153,0.15); color: #ec4899; border: 1px solid rgba(236,72,153,0.3); }
 
 /* ── PROGRESS BAR ─────────────────────────────────────────────────── */
 .progress-bar {
@@ -960,6 +961,25 @@ tbody tr { transition: background var(--transition); }
   box-shadow: 0 4px 12px rgba(239,68,68,0.3);
 }
 .student-circle.absent:hover { background: #dc2626; }
+
+.student-circle.le-student {
+  position: relative;
+  outline: 2px dashed #ec4899;
+  outline-offset: 2px;
+}
+.circle-le-tag {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ec4899;
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 800;
+  padding: 1px 3px;
+  border-radius: 4px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
 
 /* === AUTH TABS === */
 .auth-tabs { display:flex; gap:0; margin-bottom:1.5rem; background:rgba(255,255,255,0.04); border-radius:var(--radius); padding:0.25rem; border:1px solid var(--border); }

@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS public.students (
     registration_number TEXT NOT NULL UNIQUE,
     class_id            UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
     user_id             UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    is_le               BOOLEAN DEFAULT FALSE,
     created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 

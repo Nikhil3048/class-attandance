@@ -64,17 +64,22 @@ router.get('/students/:subjectId', async (req, res) => {
 
     const { data: students, error: studentsError } = await supabaseAdmin
       .from('students')
-      .select('id, name, registration_number')
+      .select('id, name, registration_number, is_le')
       .eq('class_id', subject.class_id)
       .order('name');
     if (studentsError) throw studentsError;
 
-    // Sort by last 3 digits of registration number
+    // Normal students first, LE students second (sorted by last 2 digits of registration)
     const sortedData = students.sort((a, b) => {
+      const isLeA = Boolean(a.is_le);
+      const isLeB = Boolean(b.is_le);
+      if (!isLeA && isLeB) return -1;
+      if (isLeA && !isLeB) return 1;
+
       const regA = String(a.registration_number || '').trim();
       const regB = String(b.registration_number || '').trim();
-      const matchA = regA.match(/\d{3}$/);
-      const matchB = regB.match(/\d{3}$/);
+      const matchA = regA.match(/\d{2,3}$/);
+      const matchB = regB.match(/\d{2,3}$/);
       const numA = matchA ? parseInt(matchA[0], 10) : 999;
       const numB = matchB ? parseInt(matchB[0], 10) : 999;
       if (numA !== numB) return numA - numB;
@@ -99,17 +104,22 @@ router.get('/class/:classId/students', async (req, res) => {
 
     const { data, error } = await supabaseAdmin
       .from('students')
-      .select('id, name, registration_number, user_id, created_at')
+      .select('id, name, registration_number, user_id, is_le, created_at')
       .eq('class_id', classId)
       .order('name');
     if (error) throw error;
 
-    // Sort by last 3 digits of registration number
+    // Normal students first, LE students second (sorted by last 2 digits of registration)
     const sortedData = data.sort((a, b) => {
+      const isLeA = Boolean(a.is_le);
+      const isLeB = Boolean(b.is_le);
+      if (!isLeA && isLeB) return -1;
+      if (isLeA && !isLeB) return 1;
+
       const regA = String(a.registration_number || '').trim();
       const regB = String(b.registration_number || '').trim();
-      const matchA = regA.match(/\d{3}$/);
-      const matchB = regB.match(/\d{3}$/);
+      const matchA = regA.match(/\d{2,3}$/);
+      const matchB = regB.match(/\d{2,3}$/);
       const numA = matchA ? parseInt(matchA[0], 10) : 999;
       const numB = matchB ? parseInt(matchB[0], 10) : 999;
       if (numA !== numB) return numA - numB;
@@ -132,7 +142,7 @@ router.post('/class/:classId/students', async (req, res) => {
       return res.status(403).json({ error: 'Access denied: You are not authorized for this class' });
     }
 
-    const { name, registration_number, create_login, email, password } = req.body;
+    const { name, registration_number, is_le, create_login, email, password } = req.body;
 
     if (!name || !registration_number) {
       return res.status(400).json({ error: 'name and registration_number are required' });
@@ -168,7 +178,8 @@ router.post('/class/:classId/students', async (req, res) => {
         name: String(name).trim(), 
         registration_number: String(registration_number).trim(), 
         class_id: classId, 
-        user_id 
+        user_id,
+        is_le: Boolean(is_le)
       })
       .select().single();
     if (error) throw error;

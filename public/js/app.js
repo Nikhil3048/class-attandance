@@ -161,6 +161,8 @@ const App = (() => {
         // Toggle fields
         document.getElementById('group-reg').classList.toggle('hidden', !isStudent);
         document.getElementById('signup-reg').required = isStudent;
+        const groupLe = document.getElementById('group-le');
+        if (groupLe) groupLe.classList.toggle('hidden', !isStudent);
 
         document.getElementById('group-subject').classList.toggle('hidden', isStudent);
         document.getElementById('signup-subject').required = !isStudent;
@@ -273,7 +275,10 @@ const App = (() => {
     setButtonLoading(btn, true);
     try {
       const payload = { name, email, password, class_id, role };
-      if (role === 'student') payload.registration_number = registration_number;
+      if (role === 'student') {
+        payload.registration_number = registration_number;
+        payload.is_le = document.getElementById('signup-is-le')?.checked || false;
+      }
       if (role === 'teacher') {
         payload.subject_name = subject_name;
         payload.teacher_code = teacher_code;

@@ -272,20 +272,20 @@ router.get('/students', async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Sort by last 3 digits of registration number
+    // Normal students first, LE students second (sorted by last 2 digits of registration)
     const sortedData = data.sort((a, b) => {
+      const isLeA = Boolean(a.is_le);
+      const isLeB = Boolean(b.is_le);
+      if (!isLeA && isLeB) return -1;
+      if (isLeA && !isLeB) return 1;
+
       const regA = String(a.registration_number || '').trim();
       const regB = String(b.registration_number || '').trim();
-      
-      const matchA = regA.match(/\d{3}$/);
-      const matchB = regB.match(/\d{3}$/);
-      
+      const matchA = regA.match(/\d{2,3}$/);
+      const matchB = regB.match(/\d{2,3}$/);
       const numA = matchA ? parseInt(matchA[0], 10) : 999;
       const numB = matchB ? parseInt(matchB[0], 10) : 999;
-      
-      if (numA !== numB) {
-        return numA - numB;
-      }
+      if (numA !== numB) return numA - numB;
       return a.name.localeCompare(b.name);
     });
 
@@ -297,13 +297,13 @@ router.get('/students', async (req, res) => {
 
 router.post('/students', async (req, res) => {
   try {
-    const { name, registration_number, class_id, user_id } = req.body;
+    const { name, registration_number, class_id, user_id, is_le } = req.body;
     if (!name || !registration_number || !class_id) {
       return res.status(400).json({ error: 'name, registration_number, and class_id are required' });
     }
     const { data, error } = await supabaseAdmin
       .from('students')
-      .insert({ name, registration_number, class_id, user_id: user_id || null })
+      .insert({ name, registration_number, class_id, user_id: user_id || null, is_le: Boolean(is_le) })
       .select().single();
     if (error) throw error;
     res.status(201).json(data);
@@ -314,11 +314,12 @@ router.post('/students', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
   try {
-    const { name, registration_number, class_id } = req.body;
+    const { name, registration_number, class_id, is_le } = req.body;
     const updates = {};
     if (name) updates.name = name;
     if (registration_number) updates.registration_number = registration_number;
     if (class_id) updates.class_id = class_id;
+    if (typeof is_le !== 'undefined') updates.is_le = Boolean(is_le);
     const { error } = await supabaseAdmin.from('students').update(updates).eq('id', req.params.id);
     if (error) throw error;
     res.json({ message: 'Student updated successfully' });

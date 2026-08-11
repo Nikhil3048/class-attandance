@@ -58,7 +58,7 @@ router.get('/classes', async (req, res) => {
 // ─── PUBLIC: Submit a signup request ─────────────────────────────────────────
 router.post('/', async (req, res) => {
   try {
-    const { name, email, password, class_id, role, registration_number, subject_name, teacher_code } = req.body;
+    const { name, email, password, class_id, role, registration_number, subject_name, teacher_code, is_le } = req.body;
 
     if (!name || !email || !password || !class_id || !role) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -119,6 +119,7 @@ router.post('/', async (req, res) => {
         class_id, 
         role, 
         registration_number: registration_number ? String(registration_number).trim() : null, 
+        is_le: role === 'student' ? Boolean(is_le) : false,
         subject_name: subject_name ? String(subject_name).trim() : null, 
         status: 'pending' 
       })
@@ -288,7 +289,8 @@ router.put('/:id/approve', requireRole('admin', 'teacher'), async (req, res) => 
           name: request.name,
           registration_number: regNo,
           class_id: request.class_id,
-          user_id: authData.user.id
+          user_id: authData.user.id,
+          is_le: Boolean(request.is_le)
         });
 
       if (studentError) {

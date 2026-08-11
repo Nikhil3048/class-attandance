@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.signup_requests (
     role          TEXT NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'teacher')),
     subject_name  TEXT,                    -- only required for teachers
     registration_number TEXT,              -- only required for students
+    is_le         BOOLEAN DEFAULT FALSE,   -- flag for lateral entry student
     class_id      UUID NOT NULL REFERENCES public.classes(id) ON DELETE CASCADE,
     status        TEXT NOT NULL DEFAULT 'pending'
                   CHECK (status IN ('pending', 'approved', 'rejected')),

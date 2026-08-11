@@ -150,7 +150,7 @@ const TeacherPages = (() => {
                 : students.map((s, i) => `
                   <tr id="student-row-${s.id}">
                     <td style="color:var(--text-muted)">${i+1}</td>
-                    <td><strong>${esc(s.name)}</strong></td>
+                    <td><strong>${esc(s.name)}</strong>${s.is_le ? ' <span class="badge badge-le" style="margin-left:0.35rem;">LE</span>' : ''}</td>
                     <td>${esc(s.registration_number)}</td>
                     <td>
                       ${s.user_id
@@ -179,6 +179,12 @@ const TeacherPages = (() => {
         <div class="form-group">
           <label>Registration Number *</label>
           <input type="text" id="new-student-reg" placeholder="e.g. CS2024001" />
+        </div>
+        <div class="form-group" style="margin-top:-0.25rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem;font-weight:500;color:var(--text-primary);user-select:none;">
+            <input type="checkbox" id="new-student-is-le" style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;" />
+            <span>Is Lateral Entry (LE) Student?</span>
+          </label>
         </div>
         <div style="background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.15);border-radius:var(--radius);padding:1rem;margin-top:0.5rem;">
           <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem;font-weight:600;color:var(--text-primary);">
@@ -218,6 +224,7 @@ const TeacherPages = (() => {
     const btn = document.getElementById('add-student-btn');
     const name = document.getElementById('new-student-name')?.value.trim();
     const reg  = document.getElementById('new-student-reg')?.value.trim();
+    const is_le = document.getElementById('new-student-is-le')?.checked || false;
     const createLogin = document.getElementById('create-login-check')?.checked;
     const email = document.getElementById('new-student-email')?.value.trim();
     const password = document.getElementById('new-student-password')?.value;
@@ -228,7 +235,7 @@ const TeacherPages = (() => {
     setButtonLoading(btn, true);
     try {
       const result = await ApiClient.teacher.addStudent(classId, {
-        name, registration_number: reg,
+        name, registration_number: reg, is_le,
         create_login: createLogin, email, password
       });
       Modal.close();
@@ -391,10 +398,12 @@ const TeacherPages = (() => {
     const state = attendanceStates[student.id] || 'absent';
     const regStr = String(student.registration_number || '');
     const lastTwo = regStr.length >= 2 ? regStr.slice(-2) : regStr.padStart(2, '0');
+    const isLe = Boolean(student.is_le);
     return `
-      <button class="student-circle ${state}" id="circle-${student.id}"
-        onclick="TeacherPages.handleStudentTap('${student.id}', '${esc(student.name)}', '${esc(regStr)}')">
-        ${esc(lastTwo)}
+      <button class="student-circle ${state} ${isLe ? 'le-student' : ''}" id="circle-${student.id}"
+        title="${esc(student.name)} (${esc(regStr)}${isLe ? ' - LE' : ''})"
+        onclick="TeacherPages.handleStudentTap('${student.id}', '${esc(student.name)}', '${esc(regStr)}${isLe ? ' (LE)' : ''}')">
+        ${esc(lastTwo)}${isLe ? '<span class="circle-le-tag">LE</span>' : ''}
       </button>`;
   };
 
@@ -402,7 +411,9 @@ const TeacherPages = (() => {
     attendanceStates[studentId] = status;
     const circle = document.getElementById(`circle-${studentId}`);
     if (circle) {
-      circle.className = `student-circle ${status}`;
+      const student = currentStudents.find(s => s.id === studentId);
+      const isLe = student ? Boolean(student.is_le) : false;
+      circle.className = `student-circle ${status} ${isLe ? 'le-student' : ''}`;
     }
     updateSummary();
   };

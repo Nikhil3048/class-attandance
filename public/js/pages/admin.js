@@ -130,7 +130,7 @@ const AdminPages = (() => {
           : students.map((s, i) => `
             <tr>
               <td style="color:var(--text-muted)">${i+1}</td>
-              <td><strong>${esc(s.name)}</strong></td>
+              <td><strong>${esc(s.name)}</strong>${s.is_le ? ' <span class="badge badge-le" style="margin-left:0.35rem;">LE</span>' : ''}</td>
               <td><code style="font-size:0.8rem;background:rgba(255,255,255,0.05);padding:0.15rem 0.4rem;border-radius:4px;">${esc(s.registration_number)}</code></td>
               <td>${esc(s.classes?.class_name || '—')}</td>
               <td>
@@ -158,6 +158,12 @@ const AdminPages = (() => {
             ${classes.map(c=>`<option value="${c.id}" ${isEdit && student.class_id===c.id?'selected':''}>${esc(c.class_name)}</option>`).join('')}
           </select>
         </div>
+        <div class="form-group" style="margin-top:-0.25rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.875rem;font-weight:500;color:var(--text-primary);user-select:none;">
+            <input type="checkbox" id="sis-le" ${isEdit && student.is_le ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;" />
+            <span>Is Lateral Entry (LE) Student?</span>
+          </label>
+        </div>
         <div id="student-modal-error"></div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="Modal.close()">Cancel</button>
@@ -175,7 +181,8 @@ const AdminPages = (() => {
       const data = {
         name: document.getElementById('sname').value.trim(),
         registration_number: document.getElementById('sreg').value.trim(),
-        class_id: document.getElementById('sclass').value
+        class_id: document.getElementById('sclass').value,
+        is_le: document.getElementById('sis-le')?.checked || false
       };
       if (!data.name || !data.registration_number || !data.class_id) {
         errEl.innerHTML = `<div class="alert alert-error">All fields are required</div>`;
@@ -723,6 +730,7 @@ const AdminPages = (() => {
                     <span class="badge ${r.role === 'teacher' ? 'badge-primary' : 'badge-secondary'}" style="font-size:0.7rem; padding:2px 6px; margin-left:4px;">
                       ${r.role === 'teacher' ? '👨‍🏫 Teacher' : '🎓 Student'}
                     </span>
+                    ${r.role === 'student' && r.is_le ? `<span class="badge badge-le" style="font-size:0.7rem; padding:2px 6px; margin-left:4px;">LE Student</span>` : ''}
                     <div style="margin-top:0.3rem;">
                       ${esc(r.email)} &nbsp;·&nbsp; Class: <strong>${esc(r.classes?.class_name||'—')}</strong>
                       ${r.role === 'teacher' ? `&nbsp;·&nbsp; Subject: <strong>${esc(r.subject_name||'—')}</strong>` : ''}
